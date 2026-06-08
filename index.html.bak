@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Neo Prime Control v13.2</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand brandMockup v91Brand">
+      <img src="assets/neo-v91-menu-top.png" alt="Neo Prime Box">
+    </div>
+
+    <nav class="sideNav">
+      <button class="nav active" data-view="dashboard"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h5v-6h4v6h5v-9.5"/></svg></span><span>Dashboard</span></button>
+      <button class="nav" data-view="orders"><span class="navIcon"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 8H7"/></svg></span><span>Pedidos</span></button>
+      <button class="nav" data-view="products"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.5 7.5 4.3 7.5-4.3"/><path d="M12 12v8.5"/></svg></span><span>Produtos</span></button>
+      <button class="nav" data-view="customers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Clientes</span></button>
+      <button class="nav" data-view="suppliers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3z"/><path d="M14 10h3l4 4v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span>Fornecedores</span></button>
+      <button class="nav" data-view="messages"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8M8 13h5"/></svg></span><span>Mensagens</span><b class="counter">3</b></button>
+      <button class="nav" data-view="analytics"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span>Análises</span></button>
+      <button class="nav" data-view="finance"><span class="navIcon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/><path d="M16 15h2"/></svg></span><span>Financeiro</span></button>
+      <button class="nav" data-view="reports"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6"/><path d="M8 17v-5M12 17v-3M16 17v-7"/></svg></span><span>Relatórios</span></button>
+      <button class="nav" data-view="aiImport"><span class="navIcon navIconGlow"><svg viewBox="0 0 24 24"><path d="M12 2l1.5 5L19 8.5 14 11l-2 5-2-5-5-2.5L10.5 7 12 2Z"/><path d="M19 14l.8 2.7L22 18l-2.2 1.3L19 22l-.8-2.7L16 18l2.2-1.3L19 14Z"/><path d="M5 13l.6 2L8 16l-2.4 1L5 19l-.6-2L2 16l2.4-1L5 13Z"/></svg></span><span>Importar pedido</span><b class="tag">V13.2</b></button>
+      <button class="nav" data-view="csvImport"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span><span>Importar Excel/CSV</span></button>
+      <button class="nav" data-view="settings"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.05.05a2.1 2.1 0 1 1-2.97 2.97l-.05-.05a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.65V21a2.1 2.1 0 1 1-4.2 0v-.08a1.8 1.8 0 0 0-1.1-1.65 1.8 1.8 0 0 0-2 .36l-.05.05a2.1 2.1 0 1 1-2.97-2.97l.05-.05a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.65-1.1H2a2.1 2.1 0 1 1 0-4.2h.08a1.8 1.8 0 0 0 1.65-1.1 1.8 1.8 0 0 0-.36-2l-.05-.05a2.1 2.1 0 1 1 2.97-2.97l.05.05a1.8 1.8 0 0 0 2 .36h.02A1.8 1.8 0 0 0 9.5 2V2a2.1 2.1 0 1 1 4.2 0v.08a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 2-.36l.05-.05a2.1 2.1 0 1 1 2.97 2.97l-.05.05a1.8 1.8 0 0 0-.36 2v.02A1.8 1.8 0 0 0 22 9.5h0a2.1 2.1 0 1 1 0 4.2h-.08A1.8 1.8 0 0 0 19.4 15Z"/></svg></span><span>Configurações</span></button>
+    </nav>
+
+    <div class="sideFooter sideFooterMockup v91Footer">
+      <img src="assets/neo-v91-menu-footer.png" alt="Neo Prime Box">
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="searchBox">
+        <span>⌕</span>
+        <input id="globalSearch" placeholder="Buscar pedidos, clientes, produtos..." />
+        <kbd>CTRL + K</kbd>
+      </div>
+      <div class="topbarActions">
+        <select id="globalPeriod">
+          <option value="all">Todos os períodos</option>
+          <option value="today">Hoje</option>
+          <option value="7days">Últimos 7 dias</option>
+          <option value="month">Mês atual</option>
+        </select>
+        <button class="iconBtn">🔔<b>5</b></button>
+      </div>
+    </header>
+
+    <section id="dashboard" class="view active">
+      <div class="welcome">
+        <h1>Bem-vindo(a), Neo Prime Box! 👋</h1>
+        <p>Aqui está o resumo completo da sua operação Amazon.</p>
+      </div>
+
+      <section class="kpiGrid">
+        <article class="kpi blue"><div class="kpiIcon">🛒</div><span>Vendas totais</span><strong id="kpiRevenue">R$ 0,00</strong><small id="kpiRevenueSub">Receita do período</small></article>
+        <article class="kpi green"><div class="kpiIcon">💲</div><span>Lucro líquido</span><strong id="kpiProfit">R$ 0,00</strong><small>Após compras, fretes e taxas</small></article>
+        <article class="kpi purple"><div class="kpiIcon">🛍️</div><span>Pedidos</span><strong id="kpiOrders">0</strong><small>Total filtrado</small></article>
+        <article class="kpi orange"><div class="kpiIcon">🎟️</div><span>Ticket médio</span><strong id="kpiTicket">R$ 0,00</strong><small>Receita média por pedido</small></article>
+        <article class="kpi pink"><div class="kpiIcon">%</div><span>Margem média</span><strong id="kpiMargin">0%</strong><small>Lucro / Receita</small></article>
+      </section>
+
+      <section class="amazonMetrics">
+        <article class="metricCard"><span>Hoje</span><b id="metricToday">R$ 0,00</b><small id="metricTodayOrders">0 pedido(s)</small></article>
+        <article class="metricCard"><span>Semana</span><b id="metricWeek">R$ 0,00</b><small id="metricWeekProfit">Lucro R$ 0,00</small></article>
+        <article class="metricCard"><span>Mês</span><b id="metricMonth">R$ 0,00</b><small id="metricMonthProfit">Lucro R$ 0,00</small></article>
+        <article class="metricCard"><span>Produto campeão</span><b id="metricChampion">-</b><small id="metricChampionSub">0 venda(s)</small></article>
+      </section>
+
+      <section class="dashGrid">
+        <article class="panel chartPanel">
+          <div class="panelHeader">
+            <h2>Vendas e lucro por período</h2>
+            <select id="chartRange"><option>Últimos 7 dias</option><option>Mês atual</option></select>
+          </div>
+          <canvas id="salesChart" width="900" height="320"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="panelHeader">
+            <h2>Pedidos recentes</h2>
+            <button class="linkBtn" data-view-open="orders">Ver todos</button>
+          </div>
+          <div id="recentOrders" class="recentList"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panelHeader">
+            <h2>Top Produtos</h2>
+            <button class="linkBtn" data-view-open="reports">Ver relatório</button>
+          </div>
+          <div id="topProductsDash" class="ranking"></div>
+        </article>
+
+        <article class="panel">
+          <h2>Vendas por Categoria</h2>
+          <canvas id="categoryChart" width="440" height="260"></canvas>
+          <div id="categoryLegend" class="legend"></div>
+        </article>
+
+        <article class="panel">
+          <h2>Lucro por Produto (Top 5)</h2>
+          <div id="profitBars" class="barList"></div>
+        </article>
+
+        <article class="panel">
+          <h2>Resumo Financeiro</h2>
+          <div class="financeList">
+            <p><span>Total de vendas</span><b id="sumRevenue">R$ 0,00</b></p>
+            <p><span>Total de compras</span><b id="sumBuy">R$ 0,00</b></p>
+            <p><span>Total de fretes (compra)</span><b id="sumBuyShipping">R$ 0,00</b></p>
+            <p><span>Taxas Amazon</span><b id="sumFees">R$ 0,00</b></p>
+            <hr>
+            <p class="profit"><span>Lucro líquido</span><b id="sumProfit">R$ 0,00</b></p>
+            <p class="profit"><span>Margem líquida</span><b id="sumMargin">0%</b></p>
+          </div>
+        </article>
+
+        <article class="panel aiBanner">
+          <div>
+            <h2>Central de importação <span class="tag">V12</span></h2>
+            <p>Importe por JSON ou pela sua planilha Excel/CSV com pedidos únicos por ID da venda.</p>
+          </div>
+          <button class="primary" data-view-open="aiImport">Importar agora</button>
+        </article>
+
+        <article class="panel quickPanel">
+          <h2>Ações rápidas</h2>
+          <div class="quickGrid">
+            <button data-view-open="orders">➕ <b>Novo Pedido</b><small>Registrar venda</small></button>
+            <button data-view-open="products">📦 <b>Novo Produto</b><small>Adicionar ao catálogo</small></button>
+            <button data-view-open="customers">👤 <b>Novo Cliente</b><small>Cadastrar cliente</small></button>
+            <button data-view-open="messages">💬 <b>Nova Mensagem</b><small>Mensagem padrão</small></button>
+            <button data-view-open="aiImport">✨ <b>Importar Print</b><small>Pedido Amazon</small></button>
+            <button data-view-open="csvImport">⬇️ <b>Importar CSV</b><small>Lote Amazon</small></button>
+            <button data-view-open="reports">📊 <b>Relatórios</b><small>Ver análises</small></button>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section id="orders" class="view">
+      <div class="pageHeader">
+        <div><h1>Pedidos</h1><p>Cadastre, edite e acompanhe todos os pedidos da Amazon.</p></div>
+        <button class="primary" id="newOrderBtn">+ Novo Pedido</button>
+      </div>
+
+      <article class="panel formPanel">
+        <h2 id="orderFormTitle">Novo pedido Amazon</h2>
+        <form id="orderForm" class="formGrid">
+          <input type="hidden" id="orderId">
+          <label>Data da compra<input id="orderDate" type="date" required></label>
+          <label>Nº Pedido Amazon<input id="amazonOrderId" placeholder="701-..."></label>
+          <label>Produto<select id="orderProductId" required></select></label>
+          <label>Cliente<select id="orderCustomerId"></select></label>
+          <label>Nome do cliente<input id="customerName" required></label>
+          <label>Telefone / WhatsApp<input id="customerPhone" placeholder="21999999999"></label>
+          <label>CEP<div class="inline"><input id="customerCep"><button type="button" id="cepBtn">Buscar</button></div></label>
+          <label>Endereço<input id="customerAddress"></label>
+          <label>Número<input id="customerNumber"></label>
+          <label>Complemento<input id="customerComplement"></label>
+          <label>Bairro<input id="customerDistrict"></label>
+          <label>Cidade<input id="customerCity"></label>
+          <label>UF<input id="customerUf" maxlength="2"></label>
+          <label>Fornecedor<select id="orderSupplierId"></select></label>
+          <label>Link da compra<input id="buyLink" placeholder="https://..."></label>
+          <label>Status<select id="orderStatus">
+            <option>Venda realizada Amazon</option>
+            <option>Compra realizada no fornecedor</option>
+            <option>Aguardando envio do fornecedor</option>
+            <option>Código recebido do fornecedor</option>
+            <option>Código enviado ao cliente</option>
+            <option>Entregue</option>
+            <option>Cancelado</option>
+            <option>Devolvido</option>
+            <option>Reembolsado</option>
+          </select></label>
+          <label>Preço produto vendido<input id="salePrice" type="number" step="0.01" min="0" required></label>
+          <label>Frete cobrado do cliente<input id="saleShipping" type="number" step="0.01" min="0" value="0"></label>
+          <label>Preço da compra<input id="buyPrice" type="number" step="0.01" min="0" required></label>
+          <label>Frete da compra<input id="buyShipping" type="number" step="0.01" min="0" value="0"></label>
+          <label>Desconto na compra<input id="buyDiscount" type="number" step="0.01" min="0" value="0"></label>
+          <label>Custo Amazon / taxa por indicação<input id="amazonFees" type="number" step="0.01" min="0" value="0"></label>
+          <div id="orderCalcPreview" class="full calcPreview"><span class="calcLabel">Receita</span> <span class="calcValue">R$ 0,00</span> • <span class="calcLabel">Fornecedor</span> <span class="calcValue">R$ 0,00</span> • <span class="calcLabel">Amazon</span> <span class="calcAmazon">R$ 0,00</span> • <span class="calcLabel">Lucro líquido</span> <span class="calcProfit">R$ 0,00</span></div>
+          <label>Código de rastreio<input id="trackingCode"></label>
+          <label>Rastreio enviado?<select id="trackingSent"><option>Não</option><option>Sim</option></select></label>
+          <label>Mensagem padrão<select id="messageTemplateId"></select></label>
+          <label class="full">Observações<textarea id="orderNotes"></textarea></label>
+          <div class="full actions">
+            <button class="primary" type="submit">Salvar pedido</button>
+            <button type="button" id="clearOrderBtn">Limpar / cancelar edição</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panelHeader">
+          <h2>Administração de pedidos</h2>
+          <div class="tableTools">
+            <select id="ordersStatusFilter">
+              <option value="all">Todos os status</option>
+              <option>Venda realizada Amazon</option>
+              <option>Compra realizada no fornecedor</option>
+              <option>Aguardando envio do fornecedor</option>
+              <option>Código recebido do fornecedor</option>
+              <option>Código enviado ao cliente</option>
+              <option>Entregue</option>
+              <option>Cancelado</option>
+              <option>Devolvido</option>
+              <option>Reembolsado</option>
+            </select>
+            <select id="ordersPageSize"><option>10</option><option selected>25</option><option>50</option></select>
+          </div>
+        </div>
+        <div class="ordersFinanceCards">
+          <div class="metricCard"><span>Receita total</span><b id="ordersRevenueTotal">R$ 0,00</b><small>produto + frete cliente</small></div>
+          <div class="metricCard"><span>Custo Amazon</span><b id="ordersAmazonTotal">R$ 0,00</b><small>taxa por indicação</small></div>
+          <div class="metricCard"><span>Custo fornecedor</span><b id="ordersSupplierTotal">R$ 0,00</b><small>produto + frete - desconto</small></div>
+          <div class="metricCard"><span>Lucro líquido</span><b id="ordersProfitTotal">R$ 0,00</b><small>receita - custos</small></div>
+          <div class="metricCard"><span>Margem média</span><b id="ordersMarginAverage">0%</b><small>lucro / receita</small></div>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr><th>Data compra</th><th>Pedido</th><th>Produto</th><th>Cliente</th><th>Status</th><th>Receita</th><th>Amazon</th><th>Fornecedor</th><th>Lucro</th><th>Margem</th><th>Rastreio</th><th>Ações</th></tr></thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
+        <div id="ordersPagination" class="pagination"></div>
+      </article>
+    </section>
+
+    <section id="products" class="view">
+      <div class="pageHeader"><div><h1>Produtos</h1><p>Catálogo dos produtos que você vende ou já vendeu na Amazon.</p></div></div>
+      <article class="panel formPanel">
+        <h2 id="productFormTitle">Produto do catálogo</h2>
+        <form id="productForm" class="formGrid">
+          <input type="hidden" id="productId">
+          <label>Nome do produto<input id="productName" required></label>
+          <label>Categoria<input id="productCategory" placeholder="Ex: Casa, Eletrônicos..."></label>
+          <label>ASIN<input id="productAsin"></label>
+          <label>SKU<input id="productSku"></label>
+          <label>Fornecedor padrão<select id="productSupplierId"></select></label>
+          <label>Link de compra<input id="productBuyLink"></label>
+          <label>Status<select id="productStatus"><option>Ativo na Amazon</option><option>Pausado</option><option>Fora da vitrine</option><option>Sem estoque</option><option>Arquivado</option></select></label>
+          <label>Custo fornecedor padrão<input id="productBuyPrice" type="number" step="0.01" value="0"></label>
+          <label>Frete fornecedor padrão<input id="productBuyShipping" type="number" step="0.01" value="0"></label>
+          <label>Preço produto vendido padrão<input id="productSalePrice" type="number" step="0.01" value="0"></label>
+          <label>Frete cobrado do cliente padrão<input id="productSaleShipping" type="number" step="0.01" value="0"></label>
+          <label>Custo Amazon padrão<input id="productAmazonFees" type="number" step="0.01" value="0"></label>
+          <div id="productCalcPreview" class="full calcPreview">Receita padrão R$ 0,00 • Custo fornecedor R$ 0,00 • Amazon R$ 0,00 • Lucro esperado <b>R$ 0,00</b></div>
+          <label class="full">Observações<textarea id="productNotes"></textarea></label>
+          <div class="full actions"><button class="primary" type="submit">Salvar produto</button><button type="button" id="clearProductBtn">Limpar</button></div>
+        </form>
+      </article>
+      <article class="panel">
+        <div class="panelHeader"><h2>Catálogo</h2><select id="productStatusFilter"><option value="all">Todos</option><option>Ativo na Amazon</option><option>Pausado</option><option>Fora da vitrine</option><option>Sem estoque</option><option>Arquivado</option></select></div>
+        <div class="tableWrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Fornecedor</th><th>Status</th><th>Custo fornecedor</th><th>Amazon</th><th>Receita padrão</th><th>Lucro médio</th><th>Ações</th></tr></thead><tbody id="productsTable"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="customers" class="view">
+      <div class="pageHeader"><div><h1>Clientes</h1><p>Clientes cadastrados automaticamente a partir dos pedidos.</p></div></div>
+      <article class="panel">
+        <div class="tableWrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Endereço</th><th>Pedidos</th><th>Total comprado</th><th>Última compra</th><th>Ações</th></tr></thead><tbody id="customersTable"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="suppliers" class="view">
+      <div class="pageHeader"><div><h1>Fornecedores</h1><p>Cadastre onde você compra seus produtos para dropshipping.</p></div></div>
+      <article class="panel formPanel">
+        <h2 id="supplierFormTitle">Fornecedor</h2>
+        <form id="supplierForm" class="formGrid">
+          <input type="hidden" id="supplierId">
+          <label>Nome<input id="supplierName" required></label>
+          <label>Tipo<select id="supplierType"><option>Shopee</option><option>Atacado</option><option>Distribuidor</option><option>Marketplace</option><option>Outro</option></select></label>
+          <label>WhatsApp<input id="supplierWhatsapp"></label>
+          <label>Site / link<input id="supplierSite"></label>
+          <label>Prazo médio de envio<input id="supplierLeadTime" placeholder="Ex: 2 a 5 dias"></label>
+          <label>Status<select id="supplierStatus"><option>Ativo</option><option>Pausado</option><option>Bloqueado</option></select></label>
+          <label class="full">Observações<textarea id="supplierNotes"></textarea></label>
+          <div class="full actions"><button class="primary" type="submit">Salvar fornecedor</button><button type="button" id="clearSupplierBtn">Limpar</button></div>
+        </form>
+      </article>
+      <article class="panel">
+        <div class="tableWrap"><table><thead><tr><th>Fornecedor</th><th>Tipo</th><th>WhatsApp</th><th>Prazo</th><th>Produtos</th><th>Pedidos</th><th>Ações</th></tr></thead><tbody id="suppliersTable"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="messages" class="view">
+      <div class="pageHeader"><div><h1>Mensagens</h1><p>Banco de mensagens para WhatsApp dos clientes.</p></div></div>
+      <article class="panel formPanel">
+        <h2 id="messageFormTitle">Mensagem padrão</h2>
+        <form id="messageForm" class="formGrid">
+          <input type="hidden" id="messageId">
+          <label>Nome<input id="messageName" required></label>
+          <label>Tipo<select id="messageType"><option>Compra confirmada</option><option>Rastreio</option><option>Entrega realizada</option><option>Devolução</option><option>Reembolso</option><option>Personalizada</option></select></label>
+          <label class="full">Texto<textarea id="messageBody" required placeholder="Use {cliente}, {produto}, {pedido}, {rastreio}, {loja}"></textarea></label>
+          <div class="full actions"><button class="primary" type="submit">Salvar mensagem</button><button type="button" id="clearMessageBtn">Limpar</button></div>
+        </form>
+      </article>
+      <article class="panel"><div class="tableWrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Texto</th><th>Ações</th></tr></thead><tbody id="messagesTable"></tbody></table></div></article>
+    </section>
+
+    <section id="analytics" class="view">
+      <div class="pageHeader"><div><h1>Análises</h1><p>Insights rápidos sobre produtos, clientes e fornecedores.</p></div></div>
+      <section class="kpiGrid small">
+        <article class="kpi blue"><span>Produto campeão</span><strong id="bestProduct">-</strong><small>Maior quantidade vendida</small></article>
+        <article class="kpi green"><span>Fornecedor mais usado</span><strong id="bestSupplier">-</strong><small>Maior número de pedidos</small></article>
+        <article class="kpi orange"><span>Cliente recorrente</span><strong id="bestCustomer">-</strong><small>Mais compras</small></article>
+        <article class="kpi pink"><span>Melhor margem</span><strong id="bestMargin">-</strong><small>Por produto</small></article>
+      </section>
+      <article class="panel"><h2>Alertas operacionais</h2><div id="alertsList" class="alertsList"></div></article>
+    </section>
+
+    <section id="finance" class="view">
+      <div class="pageHeader"><div><h1>Financeiro</h1><p>Demonstrativo de entradas, saídas, lucro e margem.</p></div></div>
+      <section class="kpiGrid">
+        <article class="kpi blue"><span>Entradas</span><strong id="finIn">R$ 0,00</strong><small>Produto + frete cobrado</small></article>
+        <article class="kpi orange"><span>Saídas</span><strong id="finOut">R$ 0,00</strong><small>Compra + frete + taxas</small></article>
+        <article class="kpi green"><span>Lucro</span><strong id="finProfitKpi">R$ 0,00</strong><small>Resultado líquido</small></article>
+        <article class="kpi pink"><span>Margem</span><strong id="finMarginKpi">0%</strong><small>Lucro / entradas</small></article>
+        <article class="kpi purple"><span>Pedidos pagos</span><strong id="finOrders">0</strong><small>Pedidos considerados</small></article>
+        <article class="kpi blue"><span>Receita produtos</span><strong id="finProductRevenue">R$ 0,00</strong><small>Preço do item vendido</small></article>
+        <article class="kpi purple"><span>Receita frete cliente</span><strong id="finShippingRevenue">R$ 0,00</strong><small>Total do envio cobrado</small></article>
+        <article class="kpi orange"><span>Custo fornecedor</span><strong id="finSupplierCosts">R$ 0,00</strong><small>Produto + frete fornecedor - desconto</small></article>
+        <article class="kpi pink"><span>Custo Amazon</span><strong id="finAmazonCosts">R$ 0,00</strong><small>Taxa por indicação cadastrada</small></article>
+      </section>
+      <article class="panel">
+        <h2>Resultado por mês</h2>
+        <div class="tableWrap"><table><thead><tr><th>Mês</th><th>Pedidos</th><th>Vendas</th><th>Custo fornecedor</th><th>Custo Amazon</th><th>Lucro</th><th>Margem</th></tr></thead><tbody id="financeMonthlyTable"></tbody></table></div>
+      </article>
+
+      <article class="panel">
+        <h2>Movimentação financeira</h2>
+        <div class="tableWrap"><table><thead><tr><th>Data</th><th>Pedido</th><th>Cliente</th><th>Produto vendido</th><th>Frete cliente</th><th>Fornecedor</th><th>Amazon</th><th>Receita</th><th>Saída</th><th>Lucro</th><th>Margem</th></tr></thead><tbody id="financeTable"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="reports" class="view">
+      <div class="pageHeader"><div><h1>Relatórios</h1><p>Ranking de produtos, fornecedores e clientes.</p></div></div>
+      <article class="panel">
+        <h2>Produtos campeões</h2>
+        <div class="tableWrap"><table><thead><tr><th>#</th><th>Produto</th><th>Qtd</th><th>Receita</th><th>Lucro</th><th>Margem</th></tr></thead><tbody id="reportProductsTable"></tbody></table></div>
+      </article>
+      <article class="panel">
+        <h2>Fornecedores por lucro</h2>
+        <div class="tableWrap"><table><thead><tr><th>#</th><th>Fornecedor</th><th>Pedidos</th><th>Receita</th><th>Lucro</th></tr></thead><tbody id="reportSuppliersTable"></tbody></table></div>
+      </article>
+    </section>
+
+    <section id="aiImport" class="view">
+      <div class="pageHeader"><div><h1>Central de Importação V13.2</h1><p>Importe pedidos por JSON, Excel/CSV ou cadastro manual. Custo fornecedor, link da compra, fornecedor e custo Amazon podem ficar pendentes para preencher depois.</p></div></div>
+      <article class="panel">
+        <h2>Escolha como importar</h2>
+        <div class="aiGrid">
+          <div class="aiBox">
+            <h3>1. Importar por JSON <span class="tag">recomendado</span></h3>
+            <p class="muted">Cole aqui o JSON estruturado do pedido. O custo Amazon pode ficar 0 e você preenche depois.</p>
+            <textarea id="aiJsonInput" placeholder='Exemplo:
+{
+  "orderDate": "2026-06-05",
+  "amazonOrderId": "702-1234567-1234567",
+  "customerName": "Maria Silva",
+  "productName": "Varal 3 Andares",
+  "salePrice": 65.80,
+  "saleShipping": 30.10,
+  "amazonFees": 0
+}'></textarea>
+            <div class="actions"><button id="analyzeJsonBtn" class="primary" type="button" onclick="return window.npcAnalyzeJson && window.npcAnalyzeJson(event)">Analisar JSON</button><button id="clearAiBtn" type="button" onclick="return window.npcClearAi && window.npcClearAi(event)">Limpar</button></div>
+          </div>
+          <div class="aiBox">
+            <h3>2. Importar Excel/CSV</h3>
+            <p class="muted">Use sua planilha de vendas .xlsx ou CSV. A V12 trata delimitador ;, valores em R$, linhas vazias e endereço parcial.</p>
+            <div class="actions"><button type="button" class="primary" data-view-open="csvImport">Ir para Importar Excel/CSV</button></div>
+          </div>
+          <div class="aiBox">
+            <h3>3. Cadastro manual assistido</h3>
+            <p class="muted">Use o formulário de pedidos quando estiver olhando o print da Amazon e preferir preencher campo a campo.</p>
+            <div class="actions"><button type="button" class="primary" data-view-open="orders">Abrir Pedidos</button></div>
+          </div>
+          <div class="aiBox full warnBox">
+            <h3>🤖 Análise automática por print</h3>
+            <p><strong>Integração IA/OCR não configurada.</strong> Por isso, o sistema não deve fingir que consegue ler o print automaticamente.</p>
+            <p class="muted">Use uma das opções acima: JSON, CSV ou preenchimento manual. Quando uma integração real for configurada, esta opção poderá ser ativada.</p>
+            <div class="actions"><button id="autoAnalyzeBtn" type="button">Testar análise por imagem</button></div>
+            <small id="aiStatusText" class="muted"></small>
+          </div>
+          <div class="aiBox full">
+            <h3>Prompt para gerar JSON com apoio do ChatGPT</h3>
+            <textarea id="aiPrompt" readonly></textarea>
+            <button id="copyPromptBtn" class="primary" type="button">Copiar prompt</button>
+          </div>
+        </div>
+      </article>
+      <article class="panel" id="aiReviewPanel" style="display:none">
+        <h2>Revisar antes de salvar</h2>
+        <form id="aiReviewForm" class="formGrid">
+          <label>Data da venda<input id="aiOrderDate" type="date"></label>
+          <label>Nº Pedido Amazon<input id="aiAmazonOrderId"></label>
+          <label>Produto<input id="aiProductName"></label>
+          <label>ASIN<input id="aiAsin"></label>
+          <label>SKU<input id="aiSku"></label>
+          <label>Cliente<input id="aiCustomerName"></label>
+          <label>Telefone<input id="aiCustomerPhone"></label>
+          <label>CEP<input id="aiCustomerCep"></label>
+          <label>Endereço<input id="aiCustomerAddress"></label>
+          <label>Número<input id="aiCustomerNumber"></label>
+          <label>Complemento<input id="aiCustomerComplement"></label>
+          <label>Bairro<input id="aiCustomerDistrict"></label>
+          <label>Cidade<input id="aiCustomerCity"></label>
+          <label>UF<input id="aiCustomerUf" maxlength="2"></label>
+          <label>Preço produto vendido<input id="aiSalePrice" type="number" step="0.01"></label>
+          <label>Frete cobrado do cliente<input id="aiSaleShipping" type="number" step="0.01"></label>
+          <label>Fornecedor<select id="aiSupplierId"></select></label>
+          <label>Link de compra<input id="aiBuyLink"></label>
+          <label>Preço compra<input id="aiBuyPrice" type="number" step="0.01" value="0"></label>
+          <label>Frete compra<input id="aiBuyShipping" type="number" step="0.01" value="0"></label>
+          <label>Desconto compra<input id="aiBuyDiscount" type="number" step="0.01" value="0"></label>
+          <label>Custo Amazon / taxa por indicação <small class="fieldHint">pode ficar 0 e preencher depois</small><input id="aiAmazonFees" type="number" step="0.01" value="0"></label>
+          <label>Status<input id="aiStatus"></label>
+          <label>Rastreio<input id="aiTrackingCode"></label>
+          <label>Rastreio enviado?<select id="aiTrackingSent"><option>Não</option><option>Sim</option></select></label>
+          <label>Modelo de mensagem<select id="aiMessageTemplateId"></select></label>
+          <label class="full">Observações<textarea id="aiNotes"></textarea></label>
+          <div class="full kpiMini"><span>Receita: <b id="aiRevenueCalc">R$ 0,00</b></span><span>Fornecedor: <b id="aiSupplierCalc">R$ 0,00</b></span><span>Amazon: <b id="aiAmazonCalc">R$ 0,00</b></span><span>Lucro: <b id="aiProfitCalc">R$ 0,00</b></span></div>
+          <div class="full actions"><button class="primary" type="submit">Salvar pedido importado</button><button type="button" id="sendAiToOrderBtn">Enviar para formulário de pedido</button></div>
+        </form>
+      </article>
+    </section>
+
+    <section id="csvImport" class="view">
+      <div class="pageHeader">
+        <div><h1>Importar Excel/CSV</h1><p>Importe pedidos em lote a partir da sua planilha de vendas (.xlsx, .xls ou .csv).</p></div>
+      </div>
+
+      <article class="panel">
+        <h2>Importação em lote</h2>
+        <p class="muted">Use sua planilha com cabeçalhos como: id venda, produto, Preço venda, Quantidade, Frete, Total, Endereço de entrega, Preço fornecedor, Frete do fornecedor, Desconto, Total fornecedor, Custo Amazon, Cliente, Telefone, data da venda, status, Fornecedor comprado e Link do produto. Campos não identificados ficam pendentes para preencher depois.</p>
+        <div class="csvGrid">
+          <div class="aiBox">
+            <h3>1. Selecione a planilha</h3>
+            <input id="csvFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+            <div class="actions">
+              <button id="downloadCsvTemplateBtn" class="primary" type="button">Baixar modelo CSV</button>
+              <button id="previewCsvBtn" type="button" onclick="window.npcPreviewCsv && window.npcPreviewCsv(event)">Pré-visualizar</button>
+            </div>
+          </div>
+          <div class="aiBox">
+            <h3>2. Configuração</h3>
+            <label>Fornecedor padrão para novos produtos<select id="csvDefaultSupplier"></select></label>
+            <label>Taxa Amazon padrão (%) para CSV sem custo informado<input id="csvFeePercent" type="number" step="0.01" value="15"></label>
+            <label>Status inicial<select id="csvDefaultStatus"><option>Venda realizada Amazon</option><option>Aguardando envio do fornecedor</option><option>Compra realizada no fornecedor</option></select></label>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel" id="csvPreviewPanel" style="display:none">
+        <div class="panelHeader">
+          <h2>Prévia da importação</h2>
+          <div class="actions">
+            <button id="importCsvBtn" class="primary" type="button" onclick="window.npcImportCsv && window.npcImportCsv(event)">Importar pedidos</button>
+            <button id="clearCsvBtn" type="button" onclick="window.npcClearCsv && window.npcClearCsv(event)">Limpar</button>
+          </div>
+        </div>
+        <p class="muted" id="csvPreviewInfo"></p>
+        <p class="muted" id="csvImportStatus" style="display:none"></p>
+        <div class="tableWrap">
+          <table>
+            <thead><tr><th>Pedido</th><th>Data</th><th>Produto</th><th>Cliente</th><th>Receita</th><th>Status</th></tr></thead>
+            <tbody id="csvPreviewRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="settings" class="view">
+      <div class="pageHeader"><div><h1>Configurações</h1><p>Dados básicos da operação.</p></div></div>
+      <article class="panel formPanel">
+        <form id="settingsForm" class="formGrid">
+          <label>Nome da loja<input id="storeName" value="Neo Prime Box"></label>
+          <label>Responsável<input id="storeOwner" value="José"></label>
+          <label>WhatsApp da loja<input id="storeWhatsapp" value="+55 21 96869-2887" placeholder="+55 21 96869-2887"></label>
+          <label>Abrir WhatsApp por<select id="storeWhatsappMode"><option value="web">WhatsApp Web</option><option value="wa">App / wa.me</option></select></label>
+          <label>Marketplace principal<input id="storeMarketplace" value="Amazon"></label>
+          <label>Cor principal<input id="storeColor" value="Azul / Roxo"></label>
+          <label>Status<select id="storeStatus"><option>Ativa</option><option>Pausada</option></select></label>
+          <label class="full">Observações<textarea id="storeNotes">Controle de vendas Amazon e dropshipping.</textarea></label>
+          <div class="full backupInfo"><strong>WhatsApp da loja</strong><br><span>O app abre a conversa pelo WhatsApp Web com a mensagem pronta. Para sair pelo número da loja, mantenha o WhatsApp Web logado no número +55 21 96869-2887. O sistema não envia automaticamente e não força o remetente.</span></div>
+          <div class="full backupInfo"><strong>Banco/Backup JSON V13.2</strong><br><span>Use Exportar Banco JSON para guardar seus dados em arquivo e migrar depois para Vercel/Supabase. O JSON leva produtos, pedidos, clientes, fornecedores, mensagens e configurações.</span></div>
+          <div class="full actions"><button class="primary" type="submit">Salvar configurações</button><button type="button" id="testStoreWhatsappBtn">Testar WhatsApp da loja</button><button type="button" id="exportBackupBtn">Exportar banco JSON</button><button type="button" id="importBackupBtn">Importar banco JSON</button><input id="importBackupFile" type="file" accept=".json" hidden></div>
+        </form>
+      </article>
+    </section>
+  
+
+    <div id="customerOrdersModal" class="modalOverlay" style="display:none">
+      <div class="modalCard wideModal">
+        <div class="modalHead">
+          <div>
+            <h2 id="customerOrdersTitle">Pedidos do cliente</h2>
+            <p id="customerOrdersSummary" class="muted"></p>
+          </div>
+          <button id="closeCustomerOrdersBtn" type="button">×</button>
+        </div>
+        <div class="tableWrap"><table><thead><tr><th>Data</th><th>Pedido</th><th>Produto</th><th>Qtd.</th><th>Produto</th><th>Frete</th><th>Total pedido</th><th>Lucro</th><th>Status</th></tr></thead><tbody id="customerOrdersTable"></tbody></table></div>
+      </div>
+    </div>
+
+    <div id="customerEditModal" class="modalOverlay" style="display:none">
+      <div class="modalCard">
+        <div class="modalHead">
+          <div>
+            <h2>Editar cliente</h2>
+            <p class="muted">Ajuste dados cadastrais. Os pedidos vinculados a este cliente serão atualizados para manter os relatórios consistentes.</p>
+          </div>
+          <button id="closeCustomerEditBtn" type="button">×</button>
+        </div>
+        <form id="customerEditForm" class="formGrid">
+          <input type="hidden" id="editCustomerId">
+          <label>Nome<input id="editCustomerName" required></label>
+          <label>Telefone<input id="editCustomerPhone"></label>
+          <label>CEP<input id="editCustomerCep"></label>
+          <label>Endereço<input id="editCustomerAddress"></label>
+          <label>Número<input id="editCustomerNumber"></label>
+          <label>Complemento<input id="editCustomerComplement"></label>
+          <label>Bairro<input id="editCustomerDistrict"></label>
+          <label>Cidade<input id="editCustomerCity"></label>
+          <label>UF<input id="editCustomerUf" maxlength="2"></label>
+          <div class="full actions modalActions">
+            <button class="primary" type="submit">Salvar cliente</button>
+            <button id="cancelCustomerEditBtn" type="button">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="productReviewModal" class="modalOverlay" style="display:none">
+      <div class="modalCard">
+        <div class="modalHead">
+          <div>
+            <h2>Revisar produtos novos</h2>
+            <p class="muted">Complete fornecedor, custo e link antes de importar. Produtos já existentes herdam os dados do catálogo.</p>
+          </div>
+          <button id="closeProductReviewBtn" type="button">×</button>
+        </div>
+        <div id="productReviewList" class="reviewList"></div>
+        <div class="actions modalActions">
+          <button id="confirmProductReviewBtn" class="primary" type="button">Salvar produtos e importar pedidos</button>
+          <button id="cancelProductReviewBtn" type="button">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+      <footer class="appFooter">
+      <span>© 2025 Neo Prime Box. Todos os direitos reservados.</span>
+      <span>Versão 13.3</span>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

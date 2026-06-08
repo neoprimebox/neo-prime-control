@@ -1,13 +1,19 @@
 const K={
-  products:"npc_v13_7_products", orders:"npc_v13_7_orders", customers:"npc_v13_7_customers",
-  suppliers:"npc_v13_7_suppliers", messages:"npc_v13_7_messages", settings:"npc_v13_7_settings", seeded:"npc_v13_7_seeded"
+  products:"npc_v13_8_products", orders:"npc_v13_8_orders", customers:"npc_v13_8_customers",
+  suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="13.7";
+const APP_VERSION="13.8";
 const $=id=>document.getElementById(id);
+let NPC_APP_STARTED=false;
+let NPC_SYNC_PAUSED=false;
 const read=k=>JSON.parse(localStorage.getItem(k)||"[]");
-const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const LEGACY_VERSIONS=["13_6","13_5","13_4","13_3","13_2","13_1"];
+const write=(k,v)=>{
+  localStorage.setItem(k,JSON.stringify(v));
+  const name=storageKeyToDataName(k);
+  if(NPC_APP_STARTED && !NPC_SYNC_PAUSED && name) scheduleSupabaseSync(name);
+};
+const LEGACY_VERSIONS=["13_7","13_6","13_5","13_4","13_3","13_2","13_1"];
 const DATA_KEYS=["products","orders","customers","suppliers","messages","settings"];
 function legacyKey(version,name){return `npc_v${version}_${name}`;}
 function currentKey(name){return K[name];}
@@ -67,6 +73,174 @@ const profit=o=>{
 const margin=(profitValue,revenueValue)=>num(revenueValue)?(num(profitValue)/num(revenueValue)*100):0;
 const amazonFeeDisplay=o=>num(o?.amazonFees)>0?brl(o.amazonFees):`<span class="pendingText">Pendente</span>`;
 const marginClass=v=>v>=25?"marginHigh":v>=15?"marginMid":"marginLow";
+
+
+// V13.8 - camada Supabase relacional em português.
+// A aplicação mantém o localStorage como cache para preservar a V13.7 e sincroniza com as tabelas:
+// fornecedores, produtos, clientes, mensagens, pedidos, historico_mensagens, importacoes_csv, importacoes_ia, configuracoes e backups.
+const NPC_TABLES={
+  suppliers:"fornecedores",
+  products:"produtos",
+  customers:"clientes",
+  messages:"mensagens",
+  orders:"pedidos"
+};
+const NPC_CONFIG=window.NPC_SUPABASE_CONFIG||{};
+let npcSupabase=null;
+const npcSyncTimers={};
+function storageKeyToDataName(k){return Object.entries(K).find(([name,key])=>key===k)?.[0]||"";}
+function supabaseConfigured(){return !!(NPC_CONFIG.url && NPC_CONFIG.key && !String(NPC_CONFIG.key).includes("COLE_AQUI") && !String(NPC_CONFIG.url).includes("COLE_AQUI"));}
+function getSupabase(){
+  if(!supabaseConfigured()) return null;
+  if(npcSupabase) return npcSupabase;
+  if(!window.supabase || !window.supabase.createClient){console.warn("Supabase SDK não carregado."); return null;}
+  npcSupabase=window.supabase.createClient(NPC_CONFIG.url, NPC_CONFIG.key);
+  return npcSupabase;
+}
+function setSyncStatus(msg,type="info"){
+  let el=document.getElementById("npcSyncStatus");
+  if(!el){
+    el=document.createElement("div"); el.id="npcSyncStatus";
+    el.style.cssText="position:fixed;right:14px;bottom:14px;z-index:9999;padding:8px 12px;border-radius:999px;font:12px system-ui;background:#111827;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:.92";
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.style.background=type==="error"?"#991b1b":type==="success"?"#065f46":"#111827";
+  clearTimeout(el._timer); el._timer=setTimeout(()=>{el.remove();},4500);
+}
+function compactText(v){return String(v??"").trim();}
+function dbDate(v){return v?String(v).slice(0,10):null;}
+function jsToDb(name,x){
+  if(!x) return null;
+  if(name==="suppliers") return {
+    id:x.id, nome:compactText(x.name)||"Fornecedor sem nome", tipo:x.type||null, contato:x.contact||x.contato||null,
+    telefone:x.phone||x.telefone||x.whatsapp||null, email:x.email||null, site:x.site||null,
+    prazo_medio_envio:x.leadTime||x.prazo_medio_envio||null, status:x.status||"Ativo", observacoes:x.notes||x.observacoes||null,
+    data_criacao:x.createdAt||x.data_criacao||new Date().toISOString(), data_atualizacao:x.updatedAt||new Date().toISOString()
+  };
+  if(name==="products") return {
+    id:x.id, nome:compactText(x.name)||"Produto sem nome", categoria:x.category||null, asin:x.asin||null, sku:x.sku||null,
+    ean:x.ean||null, gtin:x.gtin||null, fornecedor_id:x.supplierId||null, link_compra:x.buyLink||null, imagem_url:x.imageUrl||x.imagem_url||null,
+    status:x.status||"Ativo na Amazon", preco_compra:num(x.buyPrice), frete_compra:num(x.buyShipping), preco_venda:num(x.salePrice),
+    frete_venda:num(x.saleShipping), taxas_amazon:num(x.amazonFees), observacoes:x.notes||null,
+    data_criacao:x.createdAt||new Date().toISOString(), data_atualizacao:x.updatedAt||new Date().toISOString()
+  };
+  if(name==="customers") return {
+    id:x.id, nome:compactText(x.name)||"Cliente sem nome", telefone:x.phone||null, email:x.email||null,
+    observacoes:customerNotesToDb(x), data_criacao:x.createdAt||new Date().toISOString(), data_atualizacao:x.updatedAt||new Date().toISOString()
+  };
+  if(name==="messages") return {
+    id:x.id, nome:compactText(x.name)||"Mensagem sem nome", tipo:x.type||"Geral", texto:x.body||"", ativo:x.active!==false,
+    data_criacao:x.createdAt||new Date().toISOString(), data_atualizacao:x.updatedAt||new Date().toISOString()
+  };
+  if(name==="orders") return {
+    id:x.id, data_pedido:dbDate(x.orderDate), numero_pedido_amazon:x.amazonOrderId||null,
+    produto_id:x.productId||null, nome_produto:x.productName||null, cliente_id:x.customerId||null, nome_cliente:x.customerName||null,
+    telefone_cliente:x.customerPhone||null, cep_cliente:x.customerCep||null, endereco_cliente:x.customerAddress||null, numero_cliente:x.customerNumber||null,
+    complemento_cliente:x.customerComplement||null, bairro_cliente:x.customerDistrict||null, cidade_cliente:x.customerCity||null, uf_cliente:x.customerUf||null,
+    fornecedor_id:x.supplierId||null, link_compra:x.buyLink||null, status:x.status||"Venda realizada Amazon",
+    preco_venda:num(x.salePrice), frete_venda:num(x.saleShipping), quantidade:num(x.quantity)||1, receita_total:num(x.totalRevenue)||revenue(x),
+    preco_compra:num(x.buyPrice), frete_compra:num(x.buyShipping), desconto_compra:num(x.buyDiscount), custo_total_fornecedor:num(x.totalSupplier)||supplierOrderCost(x),
+    quantidade_fornecedor:num(x.supplierQuantity)||num(x.quantity)||1, taxas_amazon:num(x.amazonFees), lucro_liquido:hasCsvProfit(x)?num(x.netProfit):profit(x),
+    tem_lucro_liquido:!!hasCsvProfit(x), origem_lucro_liquido:x.netProfitSource||null, codigo_rastreio:x.trackingCode||null,
+    rastreio_enviado:x.trackingSent||"Não", mensagem_id:x.messageTemplateId||null, observacoes:x.notes||null,
+    data_criacao:x.createdAt||new Date().toISOString(), data_atualizacao:x.updatedAt||new Date().toISOString()
+  };
+  return null;
+}
+function customerNotesToDb(x){
+  const extras={cep:x.cep||"", address:x.address||"", number:x.number||"", complement:x.complement||"", district:x.district||"", city:x.city||"", uf:x.uf||"", notes:x.notes||""};
+  const hasExtras=Object.values(extras).some(Boolean);
+  return hasExtras?`NPC_EXTRA:${JSON.stringify(extras)}`:(x.notes||null);
+}
+function customerNotesFromDb(v){
+  const s=String(v||"");
+  if(!s.startsWith("NPC_EXTRA:")) return {notes:s};
+  try{return JSON.parse(s.slice("NPC_EXTRA:".length));}catch(e){return {notes:s};}
+}
+function dbToJs(name,x){
+  if(!x) return null;
+  if(name==="suppliers") return {id:x.id,name:x.nome,type:x.tipo||"",contact:x.contato||"",phone:x.telefone||"",whatsapp:x.telefone||"",email:x.email||"",site:x.site||"",leadTime:x.prazo_medio_envio||"",status:x.status||"Ativo",notes:x.observacoes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
+  if(name==="products") return {id:x.id,name:x.nome,category:x.categoria||"",asin:x.asin||"",sku:x.sku||"",ean:x.ean||"",gtin:x.gtin||"",supplierId:x.fornecedor_id||"",buyLink:x.link_compra||"",imageUrl:x.imagem_url||"",status:x.status||"Ativo na Amazon",buyPrice:num(x.preco_compra),buyShipping:num(x.frete_compra),salePrice:num(x.preco_venda),saleShipping:num(x.frete_venda),amazonFees:num(x.taxas_amazon),notes:x.observacoes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
+  if(name==="customers"){const extra=customerNotesFromDb(x.observacoes);return {id:x.id,name:x.nome,phone:x.telefone||"",email:x.email||"",cep:extra.cep||"",address:extra.address||"",number:extra.number||"",complement:extra.complement||"",district:extra.district||"",city:extra.city||"",uf:extra.uf||"",notes:extra.notes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};}
+  if(name==="messages") return {id:x.id,name:x.nome,type:x.tipo||"",body:x.texto||"",active:x.ativo!==false,createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
+  if(name==="orders") return {id:x.id,orderDate:x.data_pedido||"",amazonOrderId:x.numero_pedido_amazon||"",productId:x.produto_id||"",productName:x.nome_produto||"",customerId:x.cliente_id||"",customerName:x.nome_cliente||"",customerPhone:x.telefone_cliente||"",customerCep:x.cep_cliente||"",customerAddress:x.endereco_cliente||"",customerNumber:x.numero_cliente||"",customerComplement:x.complemento_cliente||"",customerDistrict:x.bairro_cliente||"",customerCity:x.cidade_cliente||"",customerUf:x.uf_cliente||"",supplierId:x.fornecedor_id||"",buyLink:x.link_compra||"",status:x.status||"Venda realizada Amazon",salePrice:num(x.preco_venda),saleShipping:num(x.frete_venda),quantity:num(x.quantidade)||1,totalRevenue:num(x.receita_total),buyPrice:num(x.preco_compra),buyShipping:num(x.frete_compra),buyDiscount:num(x.desconto_compra),totalSupplier:num(x.custo_total_fornecedor),supplierQuantity:num(x.quantidade_fornecedor)||1,amazonFees:num(x.taxas_amazon),netProfit:num(x.lucro_liquido),hasNetProfit:!!x.tem_lucro_liquido,netProfitSource:x.origem_lucro_liquido||"",trackingCode:x.codigo_rastreio||"",trackingSent:x.rastreio_enviado||"Não",messageTemplateId:x.mensagem_id||"",notes:x.observacoes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
+  return null;
+}
+function scheduleSupabaseSync(name){
+  if(!NPC_TABLES[name]) return;
+  clearTimeout(npcSyncTimers[name]);
+  npcSyncTimers[name]=setTimeout(()=>syncDataNameToSupabase(name),700);
+}
+async function syncDataNameToSupabase(name){
+  const sb=getSupabase(); if(!sb || !NPC_TABLES[name]) return;
+  const table=NPC_TABLES[name];
+  try{
+    const arr=read(K[name]||"").filter(Boolean);
+    const rows=arr.map(x=>jsToDb(name,x)).filter(x=>x && x.id);
+    if(rows.length){
+      const {error}=await sb.from(table).upsert(rows,{onConflict:"id"});
+      if(error) throw error;
+    }
+    const localIds=new Set(rows.map(r=>r.id));
+    const {data:remoteIds,error:selErr}=await sb.from(table).select("id");
+    if(selErr) throw selErr;
+    const toDelete=(remoteIds||[]).map(r=>r.id).filter(id=>!localIds.has(id));
+    for(const id of toDelete){const {error}=await sb.from(table).delete().eq("id",id); if(error) throw error;}
+    setSyncStatus(`Sincronizado: ${table}`,"success");
+  }catch(e){console.error("Erro Supabase",table,e); setSyncStatus(`Erro ao sincronizar ${table}: ${e.message||e}`,"error");}
+}
+async function loadSupabaseToLocalOrUploadLocal(){
+  const sb=getSupabase(); if(!sb) return;
+  NPC_SYNC_PAUSED=true;
+  try{
+    let loadedAny=false;
+    for(const name of ["suppliers","products","customers","messages","orders"]){
+      const table=NPC_TABLES[name];
+      const {data,error}=await sb.from(table).select("*").order("data_criacao",{ascending:true});
+      if(error) throw error;
+      if(data && data.length){
+        localStorage.setItem(K[name], JSON.stringify(data.map(r=>dbToJs(name,r)).filter(Boolean)));
+        loadedAny=true;
+      }
+    }
+    await loadSettingsFromSupabase();
+    if(loadedAny){setSyncStatus("Dados carregados do Supabase","success");}
+    else{
+      // Primeira execução: banco vazio. Envia o cache local/migração da V13.7 para as tabelas novas.
+      NPC_SYNC_PAUSED=false;
+      for(const name of ["suppliers","products","customers","messages","orders"]) await syncDataNameToSupabase(name);
+      await syncSettingsToSupabase();
+      setSyncStatus("Banco inicializado com os dados locais","success");
+      NPC_SYNC_PAUSED=true;
+    }
+  }catch(e){console.error("Erro ao carregar Supabase",e); setSyncStatus(`Erro ao carregar Supabase: ${e.message||e}`,"error");}
+  finally{NPC_SYNC_PAUSED=false; loadSettings(); render();}
+}
+async function syncSettingsToSupabase(){
+  const sb=getSupabase(); if(!sb) return;
+  try{const valor=JSON.parse(localStorage.getItem(K.settings)||"{}"); await sb.from("configuracoes").upsert({chave:"loja",valor,data_atualizacao:new Date().toISOString()},{onConflict:"chave"});}catch(e){console.warn("Não foi possível sincronizar configurações",e);}
+}
+async function loadSettingsFromSupabase(){
+  const sb=getSupabase(); if(!sb) return;
+  try{const {data,error}=await sb.from("configuracoes").select("valor").eq("chave","loja").maybeSingle(); if(error) throw error; if(data?.valor) localStorage.setItem(K.settings,JSON.stringify(data.valor));}catch(e){console.warn("Não foi possível carregar configurações",e);}
+}
+async function logWhatsappHistory(o,t,finalText){
+  const sb=getSupabase(); if(!sb || !o) return;
+  try{await sb.from("historico_mensagens").insert({pedido_id:o.id||null,cliente_id:o.customerId||null,mensagem_id:t?.id||null,canal:"WhatsApp",telefone:o.customerPhone||null,texto_final:finalText||"",enviado_em:new Date().toISOString()});}catch(e){console.warn("Histórico WhatsApp não gravado",e);}
+}
+async function logCsvImport(info){
+  const sb=getSupabase(); if(!sb) return;
+  try{await sb.from("importacoes_csv").insert(info);}catch(e){console.warn("Importação CSV não registrada",e);}
+}
+async function logAiImport(jsonOriginal,pedidoId,produtoId){
+  const sb=getSupabase(); if(!sb) return;
+  try{await sb.from("importacoes_ia").insert({json_original:jsonOriginal||{},pedido_id:pedidoId||null,produto_id:produtoId||null,status:"importado",observacoes:"Importação pela tela Importar pedido da V13.8"});}catch(e){console.warn("Importação IA não registrada",e);}
+}
+async function logBackup(data,nomeArquivo){
+  const sb=getSupabase(); if(!sb) return;
+  try{await sb.from("backups").insert({nome_arquivo:nomeArquivo,conteudo:data,origem:"manual"});}catch(e){console.warn("Backup não registrado",e);}
+}
 
 const validPhone=p=>phone(p).length>=10;
 const customerMatchKey=c=>{
@@ -446,6 +620,8 @@ function confirmWhatsappMessage(){
   const t=read(K.messages).find(m=>m.id===$("waMessageSelect")?.value);
   const link=waBaseLink(o,t);
   if(!link) return alert("Pedido sem telefone/WhatsApp.");
+  const finalText=messageText(t,o);
+  logWhatsappHistory(o,t,finalText);
   $("whatsappMessageModal").style.display="none";
   window.open(link,"_blank");
 }
@@ -532,15 +708,15 @@ function renderProducts(){
   $("productsTable").innerHTML=rows.map(p=>{const po=orders.filter(o=>o.productId===p.id);const avg=po.length?po.reduce((s,o)=>s+profit(o),0)/po.length:productExpectedProfit(p);return`<tr><td><b>${p.name}</b><br><small>ASIN: ${p.asin||"-"} | SKU: ${p.sku||"-"}</small></td><td>${p.category||"-"}</td><td>${supplierName(p.supplierId)}</td><td><span class="status">${p.status}</span></td><td>${brl(productCost(p))}</td><td>${brl(p.amazonFees)}</td><td>${brl(productRevenue(p))}</td><td class="success">${brl(avg)}</td><td><div class="actionGroup"><button onclick="editProduct('${p.id}')">Editar</button><button onclick="archiveProduct('${p.id}')">Arquivar</button><button class="danger" onclick="delProduct('${p.id}')">Excluir</button></div></td></tr>`}).join("") || `<tr><td colspan="9"><small>Nenhum produto encontrado para essa busca.</small></td></tr>`;
 }
 
-$("supplierForm").onsubmit=e=>{e.preventDefault();let arr=read(K.suppliers);let s={id:$("supplierId").value||uuid(),name:$("supplierName").value,type:$("supplierType").value,whatsapp:$("supplierWhatsapp").value,site:$("supplierSite").value,leadTime:$("supplierLeadTime").value,status:$("supplierStatus").value,notes:$("supplierNotes").value};let ix=arr.findIndex(x=>x.id===s.id);ix>=0?arr[ix]=s:arr.push(s);write(K.suppliers,arr);clearSupplier();render();};
+$("supplierForm").onsubmit=e=>{e.preventDefault();let arr=read(K.suppliers);let s={id:$("supplierId").value||uuid(),name:$("supplierName").value,type:$("supplierType").value,contact:$("supplierContact")?.value||"",phone:$("supplierWhatsapp").value,whatsapp:$("supplierWhatsapp").value,email:$("supplierEmail")?.value||"",site:$("supplierSite").value,leadTime:$("supplierLeadTime").value,status:$("supplierStatus").value,notes:$("supplierNotes").value};let ix=arr.findIndex(x=>x.id===s.id);ix>=0?arr[ix]=s:arr.push(s);write(K.suppliers,arr);clearSupplier();render();};
 function clearSupplier(){$("supplierForm").reset();$("supplierId").value="";$("supplierFormTitle").textContent="Fornecedor";}
 $("clearSupplierBtn").onclick=clearSupplier;
-function editSupplier(id){const s=read(K.suppliers).find(x=>x.id===id);if(!s)return;["Id","Name","Type","Whatsapp","Site","LeadTime","Status","Notes"].forEach(f=>{$("supplier"+f).value=s[f.charAt(0).toLowerCase()+f.slice(1)]||""});$("supplierFormTitle").textContent="Editar fornecedor";openView("suppliers");}
+function editSupplier(id){const s=read(K.suppliers).find(x=>x.id===id);if(!s)return;["Id","Name","Type","Whatsapp","Site","LeadTime","Status","Notes"].forEach(f=>{if($("supplier"+f)) $("supplier"+f).value=s[f.charAt(0).toLowerCase()+f.slice(1)]||""});if($("supplierContact")) $("supplierContact").value=s.contact||s.contato||"";if($("supplierEmail")) $("supplierEmail").value=s.email||"";$("supplierFormTitle").textContent="Editar fornecedor";openView("suppliers");}
 function delSupplier(id){if(confirm("Excluir fornecedor?")){write(K.suppliers,read(K.suppliers).filter(s=>s.id!==id));render();}}
 function renderSuppliers(){
   const products=read(K.products), orders=read(K.orders); const q=searchQuery();
-  const rows=read(K.suppliers).filter(s=>textMatch(`${s.name} ${s.type||""} ${s.whatsapp||""} ${s.site||""} ${s.leadTime||""} ${s.status||""} ${s.notes||""}`,q));
-  $("suppliersTable").innerHTML=rows.map(s=>`<tr><td><b>${s.name}</b><br><small>${s.status}</small></td><td>${s.type}</td><td>${s.whatsapp||"-"}</td><td>${s.leadTime||"-"}</td><td>${products.filter(p=>p.supplierId===s.id).length}</td><td>${orders.filter(o=>o.supplierId===s.id).length}</td><td><div class="actionGroup"><button onclick="editSupplier('${s.id}')">Editar</button><button class="danger" onclick="delSupplier('${s.id}')">Excluir</button></div></td></tr>`).join("") || `<tr><td colspan="7"><small>Nenhum fornecedor encontrado para essa busca.</small></td></tr>`;
+  const rows=read(K.suppliers).filter(s=>textMatch(`${s.name} ${s.type||""} ${s.contact||""} ${s.phone||""} ${s.whatsapp||""} ${s.email||""} ${s.site||""} ${s.leadTime||""} ${s.status||""} ${s.notes||""}`,q));
+  $("suppliersTable").innerHTML=rows.map(s=>`<tr><td><b>${s.name}</b><br><small>${s.status}</small></td><td>${s.type}</td><td>${s.contact||"-"}</td><td>${s.phone||s.whatsapp||"-"}</td><td>${s.email||"-"}</td><td>${s.leadTime||"-"}</td><td>${products.filter(p=>p.supplierId===s.id).length}</td><td>${orders.filter(o=>o.supplierId===s.id).length}</td><td><div class="actionGroup"><button onclick="editSupplier('${s.id}')">Editar</button><button class="danger" onclick="delSupplier('${s.id}')">Excluir</button></div></td></tr>`).join("") || `<tr><td colspan="9"><small>Nenhum fornecedor encontrado para essa busca.</small></td></tr>`;
 }
 
 $("messageForm").onsubmit=e=>{e.preventDefault();let arr=read(K.messages);let m={id:$("messageId").value||uuid(),name:$("messageName").value,type:$("messageType").value,body:$("messageBody").value};let ix=arr.findIndex(x=>x.id===m.id);ix>=0?arr[ix]=m:arr.push(m);write(K.messages,arr);clearMessage();render();};
@@ -1072,7 +1248,7 @@ function fillAi(d){
 }
 function aiData(){return{orderDate:$("aiOrderDate").value,amazonOrderId:$("aiAmazonOrderId").value,productName:$("aiProductName").value,asin:$("aiAsin").value,sku:$("aiSku").value,customerName:$("aiCustomerName").value,customerPhone:$("aiCustomerPhone").value,customerCep:$("aiCustomerCep").value,customerAddress:$("aiCustomerAddress").value,customerNumber:$("aiCustomerNumber").value,customerComplement:$("aiCustomerComplement").value,customerDistrict:$("aiCustomerDistrict").value,customerCity:$("aiCustomerCity").value,customerUf:$("aiCustomerUf").value,salePrice:num($("aiSalePrice").value),saleShipping:num($("aiSaleShipping").value),supplierId:$("aiSupplierId").value,buyLink:$("aiBuyLink").value,buyPrice:num($("aiBuyPrice").value),buyShipping:num($("aiBuyShipping").value),buyDiscount:num($("aiBuyDiscount").value),amazonFees:num($("aiAmazonFees").value),status:$("aiStatus").value,trackingCode:$("aiTrackingCode").value,trackingSent:$("aiTrackingSent").value,messageTemplateId:$("aiMessageTemplateId").value,notes:$("aiNotes").value};}
 function findOrCreateProduct(d){let arr=read(K.products);let p=arr.find(x=>x.asin&&d.asin&&x.asin===d.asin)||arr.find(x=>x.name?.toLowerCase()===d.productName?.toLowerCase()); if(p)return p; p={id:uuid(),name:d.productName||"Produto importado",category:"Importado",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink,status:"Ativo na Amazon",buyPrice:d.buyPrice,buyShipping:d.buyShipping,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees,notes:"Criado via importação V11.5."};arr.push(p);write(K.products,arr);return p;}
-function saveAiOrder(){const d=aiData();if(!d.productName||!d.customerName)return alert("Produto e cliente são obrigatórios.");const p=findOrCreateProduct(d);let o={id:uuid(),orderDate:d.orderDate||today(),amazonOrderId:d.amazonOrderId,productId:p.id,productName:p.name,customerName:d.customerName,customerPhone:d.customerPhone,customerCep:d.customerCep,customerAddress:d.customerAddress,customerNumber:d.customerNumber,customerComplement:d.customerComplement,customerDistrict:d.customerDistrict,customerCity:d.customerCity,customerUf:d.customerUf,supplierId:d.supplierId,buyLink:d.buyLink,status:d.status||"Venda realizada Amazon",salePrice:d.salePrice,saleShipping:d.saleShipping,buyPrice:d.buyPrice,buyShipping:d.buyShipping,buyDiscount:d.buyDiscount,amazonFees:d.amazonFees,trackingCode:d.trackingCode,trackingSent:d.trackingSent,messageTemplateId:d.messageTemplateId,notes:d.notes,createdAt:new Date().toISOString()};let orders=read(K.orders);if(!confirmIfDuplicate(o,orders,o.id)) return;o.customerId=upsertCustomer(o);orders.push(o);write(K.orders,orders);render();alert("Pedido importado com sucesso.");openView("dashboard");}
+function saveAiOrder(){const d=aiData();if(!d.productName||!d.customerName)return alert("Produto e cliente são obrigatórios.");const p=findOrCreateProduct(d);let o={id:uuid(),orderDate:d.orderDate||today(),amazonOrderId:d.amazonOrderId,productId:p.id,productName:p.name,customerName:d.customerName,customerPhone:d.customerPhone,customerCep:d.customerCep,customerAddress:d.customerAddress,customerNumber:d.customerNumber,customerComplement:d.customerComplement,customerDistrict:d.customerDistrict,customerCity:d.customerCity,customerUf:d.customerUf,supplierId:d.supplierId,buyLink:d.buyLink,status:d.status||"Venda realizada Amazon",salePrice:d.salePrice,saleShipping:d.saleShipping,buyPrice:d.buyPrice,buyShipping:d.buyShipping,buyDiscount:d.buyDiscount,amazonFees:d.amazonFees,trackingCode:d.trackingCode,trackingSent:d.trackingSent,messageTemplateId:d.messageTemplateId,notes:d.notes,createdAt:new Date().toISOString()};let orders=read(K.orders);if(!confirmIfDuplicate(o,orders,o.id)) return;o.customerId=upsertCustomer(o);orders.push(o);write(K.orders,orders);logAiImport(d,o.id,p.id);render();alert("Pedido importado com sucesso.");openView("dashboard");}
 function sendAiToOrder(){const d=aiData();const p=findOrCreateProduct(d);render();$("orderProductId").value=p.id;$("orderDate").value=d.orderDate||"";$("amazonOrderId").value=d.amazonOrderId;$("customerName").value=d.customerName;$("customerPhone").value=d.customerPhone;$("customerCep").value=d.customerCep;$("customerAddress").value=d.customerAddress;$("customerNumber").value=d.customerNumber;$("customerComplement").value=d.customerComplement;$("customerDistrict").value=d.customerDistrict;$("customerCity").value=d.customerCity;$("customerUf").value=d.customerUf;$("orderSupplierId").value=d.supplierId;$("buyLink").value=d.buyLink;$("orderStatus").value=d.status||"Venda realizada Amazon";$("salePrice").value=d.salePrice;$("saleShipping").value=d.saleShipping;$("buyPrice").value=d.buyPrice;$("buyShipping").value=d.buyShipping;$("buyDiscount").value=d.buyDiscount;$("amazonFees").value=d.amazonFees;$("trackingCode").value=d.trackingCode;$("trackingSent").value=d.trackingSent;$("messageTemplateId").value=d.messageTemplateId;$("orderNotes").value=d.notes;openView("orders");}
 
 $("globalSearch").oninput=()=>{orderPage=1;if(activeView()!=="products") lastProductAutoFillQuery="";render();};
@@ -1284,6 +1460,7 @@ function importCsvRows(event){
       orders.push(o); imported++;
     });
     write(K.orders,orders);
+    logCsvImport({nome_arquivo:$("csvFile")?.files?.[0]?.name||"CSV importado",origem:"Amazon",total_linhas:csvRowsToImport.length,importados:imported,ignorados:skipped,erros:0,observacoes:`Importação realizada pela V13.8. Antes: ${before}.`});
     const after=read(K.orders).length;
     render();
     setCsvStatus(`${imported} pedido(s) importado(s). ${skipped} duplicado(s) ignorado(s). Total de pedidos: ${before} → ${after}.`, imported?"success":"warn");
@@ -1315,7 +1492,7 @@ function loadSettings(){const st=JSON.parse(localStorage.getItem(K.settings)||"{
 function collectBackup(){
   const storage={};
   Object.values(K).forEach(key=>{storage[key]=localStorage.getItem(key)});
-  return {app:"Neo Prime Control",version:APP_VERSION,dbType:"portable-json",exportedAt:new Date().toISOString(),
+  return {app:"Neo Prime Control",version:APP_VERSION,dbType:"supabase-relacional-portugues-com-cache-local",exportedAt:new Date().toISOString(),
     products:read(K.products),orders:read(K.orders),customers:read(K.customers),suppliers:read(K.suppliers),messages:read(K.messages),settings:JSON.parse(localStorage.getItem(K.settings)||"{}"),storage};
 }
 function downloadJson(data,filename){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}
@@ -1338,9 +1515,10 @@ function restoreBackup(data){
   ["products","orders","customers","suppliers","messages"].forEach(k=>{if(Array.isArray(data[k]))write(K[k],data[k]);});
   if(data.settings) localStorage.setItem(K.settings,JSON.stringify(data.settings));
   localStorage.setItem(K.seeded,"1");
+  if(NPC_APP_STARTED && !NPC_SYNC_PAUSED){["suppliers","products","customers","messages","orders"].forEach(scheduleSupabaseSync);syncSettingsToSupabase();}
 }
-$("settingsForm").onsubmit=e=>{e.preventDefault();localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));alert("Configurações salvas localmente.");};
-$("exportBackupBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));downloadJson(collectBackup(),`neo-prime-control-v13-7-banco-json-${today()}.json`);};
+$("settingsForm").onsubmit=e=>{e.preventDefault();localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));syncSettingsToSupabase();alert("Configurações salvas e sincronizadas com Supabase quando configurado.");};
+$("exportBackupBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));const data=collectBackup();const nome=`neo-prime-control-v13-8-banco-json-${today()}.json`;logBackup(data,nome);downloadJson(data,nome);};
 $("testStoreWhatsappBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));testStoreWhatsapp();};
 $("importBackupBtn").onclick=()=>$("importBackupFile").click();$("importBackupFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!confirm("Importar backup e substituir dados atuais? Faça isso apenas com backup confiável."))return;restoreBackup(data);loadSettings();render();alert("Backup importado com sucesso.");}catch(err){alert("Não foi possível importar o backup. Verifique se o arquivo é JSON válido.");}finally{e.target.value="";}};
 
@@ -1387,6 +1565,8 @@ document.addEventListener("click", function(e){
 }, true);
 
 seed();migrateV102();loadSettings();
+NPC_APP_STARTED=true;
+if(supabaseConfigured()) loadSupabaseToLocalOrUploadLocal();
 if($("orderDate")) $("orderDate").value=today();
 if($("closeCustomerOrdersBtn")) $("closeCustomerOrdersBtn").onclick=closeCustomerOrders;
 if($("closeCustomerEditBtn")) $("closeCustomerEditBtn").onclick=closeCustomerEdit;

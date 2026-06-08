@@ -1,12 +1,32 @@
-# Neo Prime Control v13.7 - Estática
+# Neo Prime Control V13.8 - Supabase Relacional em Português
 
-Correções desta versão:
-- Busca de produtos carrega automaticamente o melhor resultado no formulário.
-- Não depende de ir até a tabela no final da página para clicar em Editar.
-- Comboboxes principais permanecem ordenados por nome.
-- Mantidas correções de clientes, pedidos, financeiro, popups e WhatsApp.
+Esta versão foi montada a partir da V13.7 e usa as tabelas relacionais em português criadas no Supabase:
 
-Como usar:
-1. Extraia o ZIP.
-2. Abra o index.html no navegador.
-3. Importe os CSVs novamente.
+- fornecedores
+- produtos
+- clientes
+- mensagens
+- pedidos
+- historico_mensagens
+- importacoes_csv
+- importacoes_ia
+- configuracoes
+- backups
+
+## Antes de publicar
+
+1. Abra `supabase-config.js`.
+2. Mantenha a URL do projeto.
+3. Cole a sua **Publishable Key / Anon Key** no campo `key`.
+4. Não use Secret Key / Service Role Key.
+
+## Como funciona
+
+A aplicação mantém o localStorage como cache local para preservar a experiência da V13.7, mas sincroniza os registros com o Supabase.
+
+Se o Supabase estiver vazio, a primeira abertura envia os dados locais/migrados para o banco.
+Se o Supabase já tiver dados, a aplicação carrega as tabelas do banco e atualiza o cache local.
+
+## Publicação
+
+Envie estes arquivos para o GitHub substituindo a V13.7. A Vercel fará o deploy automaticamente.

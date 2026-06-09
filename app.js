@@ -3,7 +3,7 @@ const K={
   suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="13.8";
+const APP_VERSION="13.8.2";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
@@ -559,6 +559,22 @@ function upsertCustomer(o){
   ix>=0?arr[ix]=c:arr.push(c);write(K.customers,arr);return c.id;
 }
 function cleanKey(v){return String(v||"").trim().toLowerCase();}
+// V13.8.2 - chave de comparação de produto por nome.
+// Evita duplicar produtos no CSV quando o mesmo item aparece em pedidos diferentes.
+function normalizeProductName(v){
+  return String(v||"")
+    .normalize("NFD").replace(/[̀-ͯ]/g,"")
+    .toLowerCase()
+    .replace(/(?:pedido|order|id|venda|compra)\s*[:#-]?\s*\d{3,}[-\d]*/g," ")
+    .replace(/\d{3}-\d{7}-\d{7}/g," ")
+    .replace(/[^a-z0-9]+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function sameProductName(a,b){
+  const na=normalizeProductName(a), nb=normalizeProductName(b);
+  return !!na && !!nb && na===nb;
+}
 function normalizeOrderId(v){return String(v||"").replace(/\s+/g,"").trim().toLowerCase();}
 function normalizeDate(v){return String(v||"").slice(0,10);}
 function duplicateOrderKey(o){return `${normalizeOrderId(o.amazonOrderId)}|${cleanKey(o.productId || o.productName)}|${normalizeDate(o.orderDate)}`;}
@@ -1247,7 +1263,7 @@ function fillAi(d){
   updateAiCalc();
 }
 function aiData(){return{orderDate:$("aiOrderDate").value,amazonOrderId:$("aiAmazonOrderId").value,productName:$("aiProductName").value,asin:$("aiAsin").value,sku:$("aiSku").value,customerName:$("aiCustomerName").value,customerPhone:$("aiCustomerPhone").value,customerCep:$("aiCustomerCep").value,customerAddress:$("aiCustomerAddress").value,customerNumber:$("aiCustomerNumber").value,customerComplement:$("aiCustomerComplement").value,customerDistrict:$("aiCustomerDistrict").value,customerCity:$("aiCustomerCity").value,customerUf:$("aiCustomerUf").value,salePrice:num($("aiSalePrice").value),saleShipping:num($("aiSaleShipping").value),supplierId:$("aiSupplierId").value,buyLink:$("aiBuyLink").value,buyPrice:num($("aiBuyPrice").value),buyShipping:num($("aiBuyShipping").value),buyDiscount:num($("aiBuyDiscount").value),amazonFees:num($("aiAmazonFees").value),status:$("aiStatus").value,trackingCode:$("aiTrackingCode").value,trackingSent:$("aiTrackingSent").value,messageTemplateId:$("aiMessageTemplateId").value,notes:$("aiNotes").value};}
-function findOrCreateProduct(d){let arr=read(K.products);let p=arr.find(x=>x.asin&&d.asin&&x.asin===d.asin)||arr.find(x=>x.name?.toLowerCase()===d.productName?.toLowerCase()); if(p)return p; p={id:uuid(),name:d.productName||"Produto importado",category:"Importado",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink,status:"Ativo na Amazon",buyPrice:d.buyPrice,buyShipping:d.buyShipping,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees,notes:"Criado via importação V11.5."};arr.push(p);write(K.products,arr);return p;}
+function findOrCreateProduct(d){let arr=read(K.products);let p=arr.find(x=>x.asin&&d.asin&&x.asin===d.asin)||arr.find(x=>sameProductName(x.name,d.productName)); if(p)return p; p={id:uuid(),name:d.productName||"Produto importado",category:"Importado",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink,status:"Ativo na Amazon",buyPrice:d.buyPrice,buyShipping:d.buyShipping,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees,notes:"Criado via importação V11.5."};arr.push(p);write(K.products,arr);return p;}
 function saveAiOrder(){const d=aiData();if(!d.productName||!d.customerName)return alert("Produto e cliente são obrigatórios.");const p=findOrCreateProduct(d);let o={id:uuid(),orderDate:d.orderDate||today(),amazonOrderId:d.amazonOrderId,productId:p.id,productName:p.name,customerName:d.customerName,customerPhone:d.customerPhone,customerCep:d.customerCep,customerAddress:d.customerAddress,customerNumber:d.customerNumber,customerComplement:d.customerComplement,customerDistrict:d.customerDistrict,customerCity:d.customerCity,customerUf:d.customerUf,supplierId:d.supplierId,buyLink:d.buyLink,status:d.status||"Venda realizada Amazon",salePrice:d.salePrice,saleShipping:d.saleShipping,buyPrice:d.buyPrice,buyShipping:d.buyShipping,buyDiscount:d.buyDiscount,amazonFees:d.amazonFees,trackingCode:d.trackingCode,trackingSent:d.trackingSent,messageTemplateId:d.messageTemplateId,notes:d.notes,createdAt:new Date().toISOString()};let orders=read(K.orders);if(!confirmIfDuplicate(o,orders,o.id)) return;o.customerId=upsertCustomer(o);orders.push(o);write(K.orders,orders);logAiImport(d,o.id,p.id);render();alert("Pedido importado com sucesso.");openView("dashboard");}
 function sendAiToOrder(){const d=aiData();const p=findOrCreateProduct(d);render();$("orderProductId").value=p.id;$("orderDate").value=d.orderDate||"";$("amazonOrderId").value=d.amazonOrderId;$("customerName").value=d.customerName;$("customerPhone").value=d.customerPhone;$("customerCep").value=d.customerCep;$("customerAddress").value=d.customerAddress;$("customerNumber").value=d.customerNumber;$("customerComplement").value=d.customerComplement;$("customerDistrict").value=d.customerDistrict;$("customerCity").value=d.customerCity;$("customerUf").value=d.customerUf;$("orderSupplierId").value=d.supplierId;$("buyLink").value=d.buyLink;$("orderStatus").value=d.status||"Venda realizada Amazon";$("salePrice").value=d.salePrice;$("saleShipping").value=d.saleShipping;$("buyPrice").value=d.buyPrice;$("buyShipping").value=d.buyShipping;$("buyDiscount").value=d.buyDiscount;$("amazonFees").value=d.amazonFees;$("trackingCode").value=d.trackingCode;$("trackingSent").value=d.trackingSent;$("messageTemplateId").value=d.messageTemplateId;$("orderNotes").value=d.notes;openView("orders");}
 
@@ -1384,7 +1400,7 @@ function uniqueCsvRecords(rows){
     if(!r || isBlankRecord(r)) return;
     const orderKey=normalizeOrderId(r.amazonOrderId);
     // V13.2: o mesmo pedido pode ter mais de um item/produto. A chave passa a ser pedido + produto.
-    const key=orderKey ? `${orderKey}|${cleanKey(r.productName)}|${num(r.totalRevenue)||num(r.salePrice)}|${num(r.quantity)||1}` : `${cleanKey(r.productName)}|${cleanKey(r.customerName)}|${normalizeDate(r.orderDate)}|${num(r.totalRevenue)||num(r.salePrice)}`;
+    const key=orderKey ? `${orderKey}|${normalizeProductName(r.productName)}|${num(r.totalRevenue)||num(r.salePrice)}|${num(r.quantity)||1}` : `${normalizeProductName(r.productName)}|${cleanKey(r.customerName)}|${normalizeDate(r.orderDate)}|${num(r.totalRevenue)||num(r.salePrice)}`;
     if(!key || seen.has(key)) return;
     seen.add(key); out.push(r);
   });
@@ -1423,7 +1439,7 @@ async function previewCsv(){
 }
 function findOrCreateProductCsv(d){
   let arr=read(K.products);
-  let p=arr.find(x=>(x.asin&&d.asin&&x.asin===d.asin)||x.name?.toLowerCase()===d.productName?.toLowerCase());
+  let p=arr.find(x=>(x.asin&&d.asin&&x.asin===d.asin)||sameProductName(x.name,d.productName));
   if(p) return p;
   p={id:uuid(),name:d.productName||"Produto importado Excel/CSV",category:"Importado Excel/CSV",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink||"",status:"Ativo na Amazon",buyPrice:d.buyPrice||0,buyShipping:d.buyShipping||0,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees||0,notes:"Criado pela importação Excel/CSV V13.2. Confira custos pendentes."};
   arr.push(p);write(K.products,arr);return p;
@@ -1437,22 +1453,24 @@ function setCsvStatus(msg, type="info"){
     el.style.display=msg?"block":"none";
   }
 }
-function importCsvRows(event){
+async function importCsvRows(event){
   if(event && event.preventDefault) event.preventDefault();
   if(csvImporting) return;
+  const previousSyncPaused = NPC_SYNC_PAUSED;
   try{
     if(!csvRowsToImport.length){
       setCsvStatus("Faça a pré-visualização primeiro antes de importar.", "warn");
       return alert("Faça a pré-visualização primeiro.");
     }
     csvImporting=true;
+    NPC_SYNC_PAUSED=true; // evita sincronizações paralelas durante importação em massa
     const btn=$("importCsvBtn");
     if(btn) btn.disabled=true;
     let orders=read(K.orders), imported=0, skipped=0;
     const before=orders.length;
     csvRowsToImport.forEach(d=>{
-      const incomingKey = `${normalizeOrderId(d.amazonOrderId)}|${cleanKey(d.productName)}|${num(d.totalRevenue)||num(d.salePrice)}|${num(d.quantity)||1}`;
-      const duplicated = incomingKey.replace(/\|/g,"") && orders.some(o=>`${normalizeOrderId(o.amazonOrderId)}|${cleanKey(o.productName)}|${num(o.totalRevenue)||num(o.salePrice)}|${num(o.quantity)||1}`===incomingKey);
+      const incomingKey = `${normalizeOrderId(d.amazonOrderId)}|${normalizeProductName(d.productName)}|${num(d.totalRevenue)||num(d.salePrice)}|${num(d.quantity)||1}`;
+      const duplicated = incomingKey.replace(/\|/g,"") && orders.some(o=>`${normalizeOrderId(o.amazonOrderId)}|${normalizeProductName(o.productName)}|${num(o.totalRevenue)||num(o.salePrice)}|${num(o.quantity)||1}`===incomingKey);
       if(duplicated){skipped++; return;}
       const p=findOrCreateProductCsv(d);
       let o={id:uuid(),orderDate:d.orderDate||today(),amazonOrderId:d.amazonOrderId||`CSV-${Date.now()}-${imported+1}`,productId:p.id,productName:p.name,customerName:d.customerName||"Cliente não informado",customerPhone:d.customerPhone||"",customerCep:d.customerCep||"",customerAddress:d.customerAddress||"",customerNumber:d.customerNumber||"",customerComplement:d.customerComplement||"",customerDistrict:d.customerDistrict||"",customerCity:d.customerCity||"",customerUf:d.customerUf||"",supplierId:d.supplierId||p.supplierId||"",buyLink:d.buyLink||"",status:d.status||"Venda realizada Amazon",salePrice:num(d.salePrice),saleShipping:num(d.saleShipping),quantity:num(d.quantity)||1,totalRevenue:num(d.totalRevenue),buyPrice:num(d.buyPrice),buyShipping:num(d.buyShipping),buyDiscount:num(d.buyDiscount),totalSupplier:num(d.totalSupplier),supplierQuantity:num(d.supplierQuantity)||num(d.quantity)||1,amazonFees:num(d.amazonFees),netProfit:num(d.netProfit),hasNetProfit:!!d.hasNetProfit,trackingCode:d.trackingCode||"",trackingSent:d.trackingSent||"Não",messageTemplateId:read(K.messages)[1]?.id||"",notes:d.notes||"Importado por Excel/CSV V13.2.",createdAt:new Date().toISOString()};
@@ -1460,7 +1478,17 @@ function importCsvRows(event){
       orders.push(o); imported++;
     });
     write(K.orders,orders);
-    logCsvImport({nome_arquivo:$("csvFile")?.files?.[0]?.name||"CSV importado",origem:"Amazon",total_linhas:csvRowsToImport.length,importados:imported,ignorados:skipped,erros:0,observacoes:`Importação realizada pela V13.8. Antes: ${before}.`});
+    // V13.8.1: sincroniza na ordem correta para respeitar as FK do Supabase.
+    // Produtos/clientes/mensagens precisam existir antes dos pedidos.
+    NPC_SYNC_PAUSED=false;
+    if(imported>0){
+      await syncDataNameToSupabase("suppliers");
+      await syncDataNameToSupabase("products");
+      await syncDataNameToSupabase("customers");
+      await syncDataNameToSupabase("messages");
+      await syncDataNameToSupabase("orders");
+    }
+    await logCsvImport({nome_arquivo:$("csvFile")?.files?.[0]?.name||"CSV importado",origem:"Amazon",total_linhas:csvRowsToImport.length,importados:imported,ignorados:skipped,erros:0,observacoes:`Importação realizada pela V13.8. Antes: ${before}.`});
     const after=read(K.orders).length;
     render();
     setCsvStatus(`${imported} pedido(s) importado(s). ${skipped} duplicado(s) ignorado(s). Total de pedidos: ${before} → ${after}.`, imported?"success":"warn");
@@ -1471,6 +1499,7 @@ function importCsvRows(event){
     setCsvStatus(`Erro ao importar: ${err.message||err}`, "error");
     alert(`Erro ao importar CSV: ${err.message||err}`);
   }finally{
+    NPC_SYNC_PAUSED=previousSyncPaused;
     csvImporting=false;
     const btn=$("importCsvBtn");
     if(btn) btn.disabled=false;

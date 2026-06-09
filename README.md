@@ -30,3 +30,8 @@ Se o Supabase já tiver dados, a aplicação carrega as tabelas do banco e atual
 ## Publicação
 
 Envie estes arquivos para o GitHub substituindo a V13.7. A Vercel fará o deploy automaticamente.
+
+
+## V13.8.3
+
+Correção: Supabase é a fonte principal dos dados operacionais. A aplicação não carrega produtos, pedidos, clientes, fornecedores ou mensagens a partir de localStorage/cookie. Ao abrir em outro navegador, as listas são consultadas diretamente nas tabelas do Supabase.

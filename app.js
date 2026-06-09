@@ -3,14 +3,25 @@ const K={
   suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="13.8.2";
+const APP_VERSION="13.8.3";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
-const read=k=>JSON.parse(localStorage.getItem(k)||"[]");
-const write=(k,v)=>{
-  localStorage.setItem(k,JSON.stringify(v));
+// V13.8.3: o Supabase passa a ser a fonte principal dos dados.
+// Não usamos mais localStorage/cookie como fonte para produtos, pedidos, clientes, fornecedores e mensagens.
+const NPC_MEMORY={products:[], orders:[], customers:[], suppliers:[], messages:[]};
+const read=k=>{
   const name=storageKeyToDataName(k);
+  if(name && Object.prototype.hasOwnProperty.call(NPC_MEMORY,name)) return NPC_MEMORY[name] || [];
+  return JSON.parse(localStorage.getItem(k)||"[]");
+};
+const write=(k,v)=>{
+  const name=storageKeyToDataName(k);
+  if(name && Object.prototype.hasOwnProperty.call(NPC_MEMORY,name)){
+    NPC_MEMORY[name]=Array.isArray(v)?v:[];
+  }else{
+    localStorage.setItem(k,JSON.stringify(v));
+  }
   if(NPC_APP_STARTED && !NPC_SYNC_PAUSED && name) scheduleSupabaseSync(name);
 };
 const LEGACY_VERSIONS=["13_7","13_6","13_5","13_4","13_3","13_2","13_1"];
@@ -76,8 +87,8 @@ const marginClass=v=>v>=25?"marginHigh":v>=15?"marginMid":"marginLow";
 
 
 // V13.8 - camada Supabase relacional em português.
-// A aplicação mantém o localStorage como cache para preservar a V13.7 e sincroniza com as tabelas:
-// fornecedores, produtos, clientes, mensagens, pedidos, historico_mensagens, importacoes_csv, importacoes_ia, configuracoes e backups.
+// A aplicação consulta o Supabase como fonte principal.
+// localStorage fica restrito a configurações/compatibilidade e não alimenta listas operacionais.
 const NPC_TABLES={
   suppliers:"fornecedores",
   products:"produtos",
@@ -191,31 +202,29 @@ async function syncDataNameToSupabase(name){
   }catch(e){console.error("Erro Supabase",table,e); setSyncStatus(`Erro ao sincronizar ${table}: ${e.message||e}`,"error");}
 }
 async function loadSupabaseToLocalOrUploadLocal(){
-  const sb=getSupabase(); if(!sb) return;
+  const sb=getSupabase(); if(!sb) return false;
   NPC_SYNC_PAUSED=true;
   try{
-    let loadedAny=false;
+    // V13.8.3: carrega SEMPRE do Supabase e limpa a memória local quando a tabela estiver vazia.
+    // Não sobe dados de localStorage automaticamente para evitar que um navegador antigo contamine o banco.
     for(const name of ["suppliers","products","customers","messages","orders"]){
       const table=NPC_TABLES[name];
       const {data,error}=await sb.from(table).select("*").order("data_criacao",{ascending:true});
       if(error) throw error;
-      if(data && data.length){
-        localStorage.setItem(K[name], JSON.stringify(data.map(r=>dbToJs(name,r)).filter(Boolean)));
-        loadedAny=true;
-      }
+      NPC_MEMORY[name]=(data||[]).map(r=>dbToJs(name,r)).filter(Boolean);
     }
     await loadSettingsFromSupabase();
-    if(loadedAny){setSyncStatus("Dados carregados do Supabase","success");}
-    else{
-      // Primeira execução: banco vazio. Envia o cache local/migração da V13.7 para as tabelas novas.
-      NPC_SYNC_PAUSED=false;
-      for(const name of ["suppliers","products","customers","messages","orders"]) await syncDataNameToSupabase(name);
-      await syncSettingsToSupabase();
-      setSyncStatus("Banco inicializado com os dados locais","success");
-      NPC_SYNC_PAUSED=true;
-    }
-  }catch(e){console.error("Erro ao carregar Supabase",e); setSyncStatus(`Erro ao carregar Supabase: ${e.message||e}`,"error");}
-  finally{NPC_SYNC_PAUSED=false; loadSettings(); render();}
+    setSyncStatus("Dados carregados diretamente do Supabase","success");
+    return true;
+  }catch(e){
+    console.error("Erro ao carregar Supabase",e);
+    setSyncStatus(`Erro ao carregar Supabase: ${e.message||e}`,"error");
+    return false;
+  }finally{
+    NPC_SYNC_PAUSED=false;
+    loadSettings();
+    render();
+  }
 }
 async function syncSettingsToSupabase(){
   const sb=getSupabase(); if(!sb) return;
@@ -1521,7 +1530,7 @@ function loadSettings(){const st=JSON.parse(localStorage.getItem(K.settings)||"{
 function collectBackup(){
   const storage={};
   Object.values(K).forEach(key=>{storage[key]=localStorage.getItem(key)});
-  return {app:"Neo Prime Control",version:APP_VERSION,dbType:"supabase-relacional-portugues-com-cache-local",exportedAt:new Date().toISOString(),
+  return {app:"Neo Prime Control",version:APP_VERSION,dbType:"supabase-relacional-portugues-db-first",exportedAt:new Date().toISOString(),
     products:read(K.products),orders:read(K.orders),customers:read(K.customers),suppliers:read(K.suppliers),messages:read(K.messages),settings:JSON.parse(localStorage.getItem(K.settings)||"{}"),storage};
 }
 function downloadJson(data,filename){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}
@@ -1593,12 +1602,27 @@ document.addEventListener("click", function(e){
   if(id==="previewCsvBtn" && window.npcPreviewCsv) return window.npcPreviewCsv(e);
 }, true);
 
-seed();migrateV102();loadSettings();
-NPC_APP_STARTED=true;
-if(supabaseConfigured()) loadSupabaseToLocalOrUploadLocal();
-if($("orderDate")) $("orderDate").value=today();
-if($("closeCustomerOrdersBtn")) $("closeCustomerOrdersBtn").onclick=closeCustomerOrders;
-if($("closeCustomerEditBtn")) $("closeCustomerEditBtn").onclick=closeCustomerEdit;
-if($("cancelCustomerEditBtn")) $("cancelCustomerEditBtn").onclick=closeCustomerEdit;
-if($("customerEditForm")) $("customerEditForm").onsubmit=saveCustomerEdit;
-setupAi();updateSearchPlaceholder();render();
+async function startApp(){
+  if($("orderDate")) $("orderDate").value=today();
+  if($("closeCustomerOrdersBtn")) $("closeCustomerOrdersBtn").onclick=closeCustomerOrders;
+  if($("closeCustomerEditBtn")) $("closeCustomerEditBtn").onclick=closeCustomerEdit;
+  if($("cancelCustomerEditBtn")) $("cancelCustomerEditBtn").onclick=closeCustomerEdit;
+  if($("customerEditForm")) $("customerEditForm").onsubmit=saveCustomerEdit;
+  setupAi();
+  updateSearchPlaceholder();
+
+  if(supabaseConfigured()){
+    NPC_APP_STARTED=true;
+    await loadSupabaseToLocalOrUploadLocal();
+  }else{
+    // Modo fallback para desenvolvimento local sem Supabase configurado.
+    // Em produção, configure supabase-config.js para usar somente o banco.
+    seed();
+    migrateV102();
+    loadSettings();
+    NPC_APP_STARTED=true;
+    render();
+    setSyncStatus("Supabase não configurado. Usando modo local de desenvolvimento.","error");
+  }
+}
+startApp();

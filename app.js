@@ -568,21 +568,41 @@ function upsertCustomer(o){
   ix>=0?arr[ix]=c:arr.push(c);write(K.customers,arr);return c.id;
 }
 function cleanKey(v){return String(v||"").trim().toLowerCase();}
-// V13.8.2 - chave de comparação de produto por nome.
-// Evita duplicar produtos no CSV quando o mesmo item aparece em pedidos diferentes.
+// V13.8.4 - chave de comparação de produto mais rígida por ASIN/SKU e nome limpo.
+// Objetivo: não criar produto novo quando o mesmo item aparecer em vários pedidos/importações.
 function normalizeProductName(v){
   return String(v||"")
-    .normalize("NFD").replace(/[̀-ͯ]/g,"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
     .toLowerCase()
-    .replace(/(?:pedido|order|id|venda|compra)\s*[:#-]?\s*\d{3,}[-\d]*/g," ")
-    .replace(/\d{3}-\d{7}-\d{7}/g," ")
+    .replace(/\b\d{3}-\d{7}-\d{7}\b/g," ") // pedido Amazon 701-...
+    .replace(/\b(?:pedido|order|id|venda|compra|amazon)\s*[:#-]?\s*\d{3,}(?:[-\d]+)?\b/g," ")
+    .replace(/\b(?:sku|asin)\s*[:#-]?\s*[a-z0-9-]+\b/g," ")
     .replace(/[^a-z0-9]+/g," ")
     .replace(/\s+/g," ")
     .trim();
 }
+function productTokens(v){
+  return normalizeProductName(v).split(" ").filter(t=>t.length>1 && !["de","da","do","das","dos","com","para","por","sem","em","a","o","e"].includes(t));
+}
+function tokenSimilarity(a,b){
+  const ta=[...new Set(productTokens(a))], tb=[...new Set(productTokens(b))];
+  if(!ta.length || !tb.length) return 0;
+  const small=ta.length<=tb.length?ta:tb, big=ta.length<=tb.length?tb:ta;
+  const hits=small.filter(t=>big.includes(t)).length;
+  return hits/small.length;
+}
 function sameProductName(a,b){
   const na=normalizeProductName(a), nb=normalizeProductName(b);
-  return !!na && !!nb && na===nb;
+  if(!na || !nb) return false;
+  if(na===nb) return true;
+  // Evita duplicar quando uma importação vem com pequenas variações no título.
+  if(Math.min(na.length,nb.length)>=16 && (na.includes(nb) || nb.includes(na))) return true;
+  return tokenSimilarity(na,nb)>=0.92;
+}
+function sameSkuOrAsin(product, d){
+  const asinA=cleanKey(product?.asin), asinB=cleanKey(d?.asin);
+  const skuA=cleanKey(product?.sku), skuB=cleanKey(d?.sku);
+  return (!!asinA && !!asinB && asinA===asinB) || (!!skuA && !!skuB && skuA===skuB);
 }
 function normalizeOrderId(v){return String(v||"").replace(/\s+/g,"").trim().toLowerCase();}
 function normalizeDate(v){return String(v||"").slice(0,10);}
@@ -1448,9 +1468,24 @@ async function previewCsv(){
 }
 function findOrCreateProductCsv(d){
   let arr=read(K.products);
-  let p=arr.find(x=>(x.asin&&d.asin&&x.asin===d.asin)||sameProductName(x.name,d.productName));
-  if(p) return p;
-  p={id:uuid(),name:d.productName||"Produto importado Excel/CSV",category:"Importado Excel/CSV",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink||"",status:"Ativo na Amazon",buyPrice:d.buyPrice||0,buyShipping:d.buyShipping||0,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees||0,notes:"Criado pela importação Excel/CSV V13.2. Confira custos pendentes."};
+  let p=arr.find(x=>sameSkuOrAsin(x,d) || sameProductName(x.name,d.productName));
+  if(p){
+    // Completa dados vazios do produto existente, sem sobrescrever o que você já editou manualmente.
+    const ix=arr.findIndex(x=>x.id===p.id);
+    const updated={...p};
+    if(!updated.asin && d.asin) updated.asin=d.asin;
+    if(!updated.sku && d.sku) updated.sku=d.sku;
+    if(!updated.supplierId && d.supplierId) updated.supplierId=d.supplierId;
+    if(!updated.buyLink && d.buyLink) updated.buyLink=d.buyLink;
+    if(!num(updated.buyPrice) && d.buyPrice) updated.buyPrice=d.buyPrice;
+    if(!num(updated.buyShipping) && d.buyShipping) updated.buyShipping=d.buyShipping;
+    if(!num(updated.salePrice) && d.salePrice) updated.salePrice=d.salePrice;
+    if(!num(updated.saleShipping) && d.saleShipping) updated.saleShipping=d.saleShipping;
+    if(!num(updated.amazonFees) && d.amazonFees) updated.amazonFees=d.amazonFees;
+    if(ix>=0){arr[ix]=updated; write(K.products,arr);}
+    return updated;
+  }
+  p={id:uuid(),name:d.productName||"Produto importado Excel/CSV",category:"Importado Excel/CSV",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink||"",status:"Ativo na Amazon",buyPrice:d.buyPrice||0,buyShipping:d.buyShipping||0,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees||0,notes:"Criado pela importação Excel/CSV V13.8.4. Produto validado por ASIN/SKU/nome normalizado."};
   arr.push(p);write(K.products,arr);return p;
 }
 let csvImporting=false;

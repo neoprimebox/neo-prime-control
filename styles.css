@@ -488,3 +488,16 @@ input,select,textarea{background:#0b1428;border:1px solid var(--border);color:va
 .modalCard{margin:auto;}
 .waModal{width:min(720px,96vw);}
 .waModal textarea{min-height:160px;resize:vertical;}
+
+
+/* v13.8.4 - Ajustes de largura do formulário de pedidos */
+.main{max-width:100%;overflow-x:hidden;}
+.panel{max-width:100%;overflow:hidden;}
+.formGrid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;}
+.formGrid label,.formGrid .inline{min-width:0;}
+.formGrid input,.formGrid select,.formGrid textarea{width:100%;max-width:100%;min-width:0;}
+.inline{min-width:0;width:100%;}
+.inline button{flex:0 0 auto;white-space:nowrap;}
+#orderProductId,#customerPhone,#buyLink{min-width:0;}
+@media(max-width:1400px){.formGrid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:980px){.formGrid{grid-template-columns:1fr;}.main{overflow-x:hidden;}}

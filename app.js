@@ -3,7 +3,7 @@ const K={
   suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="13.8.6";
+const APP_VERSION="13.8.8";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
@@ -642,17 +642,75 @@ function confirmIfDuplicate(candidate, arr, excludeId=""){
   const dup=findDuplicateOrder(candidate, arr, excludeId);
   return !dup || confirm(duplicateWarningText(dup));
 }
+
+// V13.8.8 - ao editar/carregar um pedido, tenta religar o produto pelo ID ou pelo nome.
+function findProductForOrder(o){
+  const products=read(K.products);
+  if(!o) return null;
+  let p=products.find(x=>x.id===o.productId);
+  if(p) return p;
+  if(o.productName){
+    p=products.find(x=>sameProductName(x.name,o.productName));
+    if(p) return p;
+  }
+  return null;
+}
+function ensureOrderProductOption(p){
+  const sel=$("orderProductId");
+  if(!sel || !p) return;
+  if(![...sel.options].some(opt=>opt.value===p.id)){
+    sel.insertAdjacentHTML("beforeend",`<option value="${esc(p.id)}">${optionLabelSafe(p.name)}${p.status?` — ${optionLabelSafe(p.status)}`:""}</option>`);
+  }
+}
+function resolveOrderProductSelection(o){
+  const p=findProductForOrder(o);
+  if(!p) return o;
+  ensureOrderProductOption(p);
+  return {...o, productId:p.id, productName:p.name};
+}
+function updateProductPurchaseFromOrder(o){
+  if(!o?.productId) return;
+  const products=read(K.products);
+  const ix=products.findIndex(p=>p.id===o.productId);
+  if(ix<0) return;
+  const current=products[ix];
+  const next={...current, updatedAt:new Date().toISOString()};
+  if(o.buyLink) next.buyLink=o.buyLink;
+  if(num(o.buyPrice)>0) next.buyPrice=num(o.buyPrice);
+  if(num(o.buyShipping)>=0) next.buyShipping=num(o.buyShipping);
+  if(o.supplierId) next.supplierId=o.supplierId;
+  products[ix]=next;
+  write(K.products,products);
+}
 function orderFromForm(){
   const p=read(K.products).find(x=>x.id===$("orderProductId").value);
-  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value,productName:p?.name||"",customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
+  const old=read(K.orders).find(x=>x.id===$("orderId").value)||{};
+  const productName=p?.name || old.productName || "";
+  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value||p?.id||old.productId||"",productName,customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
 }
-$("orderForm").onsubmit=e=>{e.preventDefault();let arr=read(K.orders);let o=orderFromForm();let ix=arr.findIndex(x=>x.id===o.id);if(ix<0 && !confirmIfDuplicate(o,arr,o.id)) return;o.customerId=upsertCustomer(o);ix>=0?arr[ix]=o:arr.push({...o,createdAt:new Date().toISOString()});write(K.orders,arr);clearOrder();render();};
+$("orderForm").onsubmit=e=>{e.preventDefault();let arr=read(K.orders);let o=resolveOrderProductSelection(orderFromForm());let ix=arr.findIndex(x=>x.id===o.id);if(ix<0 && !confirmIfDuplicate(o,arr,o.id)) return;o.customerId=upsertCustomer(o);ix>=0?arr[ix]=o:arr.push({...o,createdAt:new Date().toISOString()});write(K.orders,arr);updateProductPurchaseFromOrder(o);clearOrder();render();};
 function clearOrder(){ $("orderForm").reset(); $("orderId").value=""; $("orderFormTitle").textContent="Novo pedido Amazon"; $("orderDate").value=today(); ["saleShipping","buyShipping","buyDiscount","amazonFees"].forEach(id=>$(id).value=0); if($("orderQuantity")) $("orderQuantity").value=1;}
 $("clearOrderBtn").onclick=clearOrder;$("newOrderBtn").onclick=()=>{clearOrder();document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
-function editOrder(id){const o=read(K.orders).find(x=>x.id===id);if(!o)return;const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:o.productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:o.supplierId,buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};Object.entries(map).forEach(([k,v])=>{if($(k))$(k).value=v||""});$("orderFormTitle").textContent="Editar pedido Amazon";openView("orders");document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
+function editOrder(id){let o=read(K.orders).find(x=>x.id===id);if(!o)return;o=resolveOrderProductSelection(o);const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:o.productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:o.supplierId,buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};Object.entries(map).forEach(([k,v])=>{if($(k))$(k).value=v||""});$("orderFormTitle").textContent=`Editar pedido Amazon${o.productName?` · ${o.productName}`:""}`;updateOrderCalcPreview();openView("orders");document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
 function delOrder(id){if(confirm("Excluir pedido?")){write(K.orders,read(K.orders).filter(o=>o.id!==id));render();}}
 function markSent(id){write(K.orders,read(K.orders).map(o=>o.id===id?{...o,trackingSent:"Sim",status:"Código enviado ao cliente"}:o));render();}
-function messageText(t,o){return String(t?.body||"").replaceAll("{cliente}",o.customerName||"").replaceAll("{produto}",o.productName||"").replaceAll("{pedido}",o.amazonOrderId||"").replaceAll("{rastreio}",o.trackingCode||"").replaceAll("{loja}",STORE);}
+function messageText(t,o){
+  const body=String(t?.body||"")
+    .replaceAll("{cliente}",o.customerName||"")
+    .replaceAll("{produto}",o.productName||"")
+    .replaceAll("{pedido}",o.amazonOrderId||"")
+    .replaceAll("{rastreio}",o.trackingCode||"")
+    .replaceAll("{codigo_rastreio}",o.trackingCode||"")
+    .replaceAll("{codigo}",o.trackingCode||"")
+    .replaceAll("{loja}",STORE);
+  const raw=String(t?.body||"").toLowerCase();
+  const tpl=`${t?.name||""} ${t?.type||""}`.toLowerCase();
+  const hasTrackingPlaceholder=raw.includes("{rastreio}") || raw.includes("{codigo_rastreio}") || raw.includes("{codigo}");
+  if(o.trackingCode && !hasTrackingPlaceholder && /confirma|confirmad|rastreio|envio/.test(tpl)){
+    return `${body.trim()} Código de rastreio: ${o.trackingCode}.`;
+  }
+  return body;
+}
 function waBaseLink(o,t){const p=phone(o?.customerPhone);if(!p)return"";return`https://wa.me/${p}?text=${encodeURIComponent(messageText(t,o))}`;}
 let pendingWhatsappOrderId="";
 function sendWa(id){

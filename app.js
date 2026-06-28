@@ -7,7 +7,7 @@ const APP_VERSION="13.8.8";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
-// V13.8.3: o Supabase passa a ser a fonte principal dos dados.
+// V13.9.3: o Supabase passa a ser a fonte principal dos dados.
 // Não usamos mais localStorage/cookie como fonte para produtos, pedidos, clientes, fornecedores e mensagens.
 const NPC_MEMORY={products:[], orders:[], customers:[], suppliers:[], messages:[]};
 const read=k=>{
@@ -86,7 +86,7 @@ const amazonFeeDisplay=o=>num(o?.amazonFees)>0?brl(o.amazonFees):`<span class="p
 const marginClass=v=>v>=25?"marginHigh":v>=15?"marginMid":"marginLow";
 
 
-// V13.8 - camada Supabase relacional em português.
+// V13.9 - camada Supabase relacional em português.
 // A aplicação consulta o Supabase como fonte principal.
 // localStorage fica restrito a configurações/compatibilidade e não alimenta listas operacionais.
 const NPC_TABLES={
@@ -205,7 +205,7 @@ async function loadSupabaseToLocalOrUploadLocal(){
   const sb=getSupabase(); if(!sb) return false;
   NPC_SYNC_PAUSED=true;
   try{
-    // V13.8.3: carrega SEMPRE do Supabase e limpa a memória local quando a tabela estiver vazia.
+    // V13.9.3: carrega SEMPRE do Supabase e limpa a memória local quando a tabela estiver vazia.
     // Não sobe dados de localStorage automaticamente para evitar que um navegador antigo contamine o banco.
     for(const name of ["suppliers","products","customers","messages","orders"]){
       const table=NPC_TABLES[name];
@@ -244,7 +244,7 @@ async function logCsvImport(info){
 }
 async function logAiImport(jsonOriginal,pedidoId,produtoId){
   const sb=getSupabase(); if(!sb) return;
-  try{await sb.from("importacoes_ia").insert({json_original:jsonOriginal||{},pedido_id:pedidoId||null,produto_id:produtoId||null,status:"importado",observacoes:"Importação pela tela Importar pedido da V13.8"});}catch(e){console.warn("Importação IA não registrada",e);}
+  try{await sb.from("importacoes_ia").insert({json_original:jsonOriginal||{},pedido_id:pedidoId||null,produto_id:produtoId||null,status:"importado",observacoes:"Importação pela tela Importar pedido da V13.9"});}catch(e){console.warn("Importação IA não registrada",e);}
 }
 async function logBackup(data,nomeArquivo){
   const sb=getSupabase(); if(!sb) return;
@@ -583,7 +583,7 @@ function upsertCustomer(o){
   ix>=0?arr[ix]=c:arr.push(c);write(K.customers,arr);return c.id;
 }
 function cleanKey(v){return String(v||"").trim().toLowerCase();}
-// V13.8.4 - chave de comparação de produto mais rígida por ASIN/SKU e nome limpo.
+// V13.9.4 - chave de comparação de produto mais rígida por ASIN/SKU e nome limpo.
 // Objetivo: não criar produto novo quando o mesmo item aparecer em vários pedidos/importações.
 function normalizeProductName(v){
   return String(v||"")
@@ -612,7 +612,7 @@ function sameProductName(a,b){
   if(na===nb) return true;
   // Evita duplicar quando uma importação vem com pequenas variações no título.
   if(Math.min(na.length,nb.length)>=16 && (na.includes(nb) || nb.includes(na))) return true;
-  return tokenSimilarity(na,nb)>=0.92;
+  return tokenSimilarity(na,nb)>=0.88;
 }
 function sameSkuOrAsin(product, d){
   const asinA=cleanKey(product?.asin), asinB=cleanKey(d?.asin);
@@ -643,15 +643,30 @@ function confirmIfDuplicate(candidate, arr, excludeId=""){
   return !dup || confirm(duplicateWarningText(dup));
 }
 
-// V13.8.8 - ao editar/carregar um pedido, tenta religar o produto pelo ID ou pelo nome.
+// V13.9 - ao editar/carregar um pedido, tenta religar o produto pelo ID, nome exato ou nome aproximado.
 function findProductForOrder(o){
   const products=read(K.products);
   if(!o) return null;
-  let p=products.find(x=>x.id===o.productId);
+
+  // 1) Primeiro tenta pelo ID gravado no pedido.
+  let p=products.find(x=>String(x.id)===String(o.productId));
   if(p) return p;
-  if(o.productName){
-    p=products.find(x=>sameProductName(x.name,o.productName));
+
+  // 2) Depois tenta pelo nome salvo no pedido. Isso corrige pedidos antigos/importados
+  // que vieram apenas com nome_produto, sem produto_id.
+  const orderProductName=String(o.productName||o.nome_produto||"").trim();
+  if(orderProductName){
+    p=products.find(x=>sameProductName(x.name,orderProductName));
     if(p) return p;
+
+    // 3) Última tentativa: pontuação por tokens, mais tolerante para títulos Amazon longos
+    // com variações de cor, tamanho, acentos ou palavras extras.
+    let best=null, bestScore=0;
+    products.forEach(x=>{
+      const score=tokenSimilarity(x.name,orderProductName);
+      if(score>bestScore){ bestScore=score; best=x; }
+    });
+    if(best && bestScore>=0.72) return best;
   }
   return null;
 }
@@ -666,7 +681,18 @@ function resolveOrderProductSelection(o){
   const p=findProductForOrder(o);
   if(!p) return o;
   ensureOrderProductOption(p);
-  return {...o, productId:p.id, productName:p.name};
+  return {...o, productId:p.id, productName:p.name, supplierId:o.supplierId||p.supplierId||""};
+}
+
+function syncResolvedProductBackToOrder(o){
+  if(!o?.id || !o?.productId) return;
+  const orders=read(K.orders);
+  const ix=orders.findIndex(x=>x.id===o.id);
+  if(ix<0) return;
+  const changed=orders[ix].productId!==o.productId || orders[ix].productName!==o.productName || (!orders[ix].supplierId && o.supplierId);
+  if(!changed) return;
+  orders[ix]={...orders[ix],productId:o.productId,productName:o.productName,supplierId:o.supplierId||orders[ix].supplierId||"",updatedAt:new Date().toISOString()};
+  write(K.orders,orders);
 }
 function updateProductPurchaseFromOrder(o){
   if(!o?.productId) return;
@@ -691,7 +717,27 @@ function orderFromForm(){
 $("orderForm").onsubmit=e=>{e.preventDefault();let arr=read(K.orders);let o=resolveOrderProductSelection(orderFromForm());let ix=arr.findIndex(x=>x.id===o.id);if(ix<0 && !confirmIfDuplicate(o,arr,o.id)) return;o.customerId=upsertCustomer(o);ix>=0?arr[ix]=o:arr.push({...o,createdAt:new Date().toISOString()});write(K.orders,arr);updateProductPurchaseFromOrder(o);clearOrder();render();};
 function clearOrder(){ $("orderForm").reset(); $("orderId").value=""; $("orderFormTitle").textContent="Novo pedido Amazon"; $("orderDate").value=today(); ["saleShipping","buyShipping","buyDiscount","amazonFees"].forEach(id=>$(id).value=0); if($("orderQuantity")) $("orderQuantity").value=1;}
 $("clearOrderBtn").onclick=clearOrder;$("newOrderBtn").onclick=()=>{clearOrder();document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
-function editOrder(id){let o=read(K.orders).find(x=>x.id===id);if(!o)return;o=resolveOrderProductSelection(o);const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:o.productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:o.supplierId,buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};Object.entries(map).forEach(([k,v])=>{if($(k))$(k).value=v||""});$("orderFormTitle").textContent=`Editar pedido Amazon${o.productName?` · ${o.productName}`:""}`;updateOrderCalcPreview();openView("orders");document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
+function editOrder(id){let o=read(K.orders).find(x=>x.id===id);if(!o)return;o=resolveOrderProductSelection(o);syncResolvedProductBackToOrder(o);renderSelects();ensureOrderProductOption(findProductForOrder(o));const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:o.productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:o.supplierId,buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};Object.entries(map).forEach(([k,v])=>{if($(k))$(k).value=(v ?? "")});$("orderFormTitle").textContent=`Editar pedido Amazon${o.productName?` · ${o.productName}`:""}`;updateOrderCalcPreview();openView("orders");document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
+
+function findOrderByAmazonCode(code){
+  const key=normalizeOrderId(code);
+  if(!key) return null;
+  return read(K.orders).find(o=>normalizeOrderId(o.amazonOrderId)===key) || null;
+}
+function loadOrderWhenAmazonCodeExists(){
+  const typed=$('amazonOrderId')?.value;
+  if(!typed || $('orderId')?.value) return;
+  const found=findOrderByAmazonCode(typed);
+  if(found){
+    editOrder(found.id);
+    setSyncStatus(`Pedido ${found.amazonOrderId||typed} carregado para edição.`, 'ok');
+  }
+}
+if($('amazonOrderId')){
+  $('amazonOrderId').addEventListener('change',loadOrderWhenAmazonCodeExists);
+  $('amazonOrderId').addEventListener('blur',loadOrderWhenAmazonCodeExists);
+}
+
 function delOrder(id){if(confirm("Excluir pedido?")){write(K.orders,read(K.orders).filter(o=>o.id!==id));render();}}
 function markSent(id){write(K.orders,read(K.orders).map(o=>o.id===id?{...o,trackingSent:"Sim",status:"Código enviado ao cliente"}:o));render();}
 function messageText(t,o){
@@ -1678,7 +1724,7 @@ function findOrCreateProductCsv(d){
     if(ix>=0){arr[ix]=updated; write(K.products,arr);}
     return updated;
   }
-  p={id:uuid(),name:d.productName||"Produto importado Excel/CSV",category:"Importado Excel/CSV",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink||"",status:"Ativo na Amazon",buyPrice:d.buyPrice||0,buyShipping:d.buyShipping||0,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees||0,notes:"Criado pela importação Excel/CSV V13.8.4. Produto validado por ASIN/SKU/nome normalizado."};
+  p={id:uuid(),name:d.productName||"Produto importado Excel/CSV",category:"Importado Excel/CSV",asin:d.asin||"",sku:d.sku||"",supplierId:d.supplierId,buyLink:d.buyLink||"",status:"Ativo na Amazon",buyPrice:d.buyPrice||0,buyShipping:d.buyShipping||0,salePrice:d.salePrice,saleShipping:d.saleShipping,amazonFees:d.amazonFees||0,notes:"Criado pela importação Excel/CSV V13.9.4. Produto validado por ASIN/SKU/nome normalizado."};
   arr.push(p);write(K.products,arr);return p;
 }
 let csvImporting=false;
@@ -1715,7 +1761,7 @@ async function importCsvRows(event){
       orders.push(o); imported++;
     });
     write(K.orders,orders);
-    // V13.8.1: sincroniza na ordem correta para respeitar as FK do Supabase.
+    // V13.9.1: sincroniza na ordem correta para respeitar as FK do Supabase.
     // Produtos/clientes/mensagens precisam existir antes dos pedidos.
     NPC_SYNC_PAUSED=false;
     if(imported>0){
@@ -1725,7 +1771,7 @@ async function importCsvRows(event){
       await syncDataNameToSupabase("messages");
       await syncDataNameToSupabase("orders");
     }
-    await logCsvImport({nome_arquivo:$("csvFile")?.files?.[0]?.name||"CSV importado",origem:"Amazon",total_linhas:csvRowsToImport.length,importados:imported,ignorados:skipped,erros:0,observacoes:`Importação realizada pela V13.8. Antes: ${before}.`});
+    await logCsvImport({nome_arquivo:$("csvFile")?.files?.[0]?.name||"CSV importado",origem:"Amazon",total_linhas:csvRowsToImport.length,importados:imported,ignorados:skipped,erros:0,observacoes:`Importação realizada pela V13.9. Antes: ${before}.`});
     const after=read(K.orders).length;
     render();
     setCsvStatus(`${imported} pedido(s) importado(s). ${skipped} duplicado(s) ignorado(s). Total de pedidos: ${before} → ${after}.`, imported?"success":"warn");

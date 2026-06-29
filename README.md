@@ -1,15 +1,14 @@
-# Neo Prime Control v13.9
+# Neo Prime Control v13.9.1
 
-Baseada na v13.8.8.
+Correções principais:
 
-## Correções desta versão
+1. Ao editar ou carregar pedido, o produto agora é preenchido no campo Produto depois da renderização da tela, evitando que o select volte para "Selecione...".
+2. Busca principal com Enter:
+   - Em Pedidos: busca pelo número Amazon e carrega o formulário do pedido.
+   - Em Produtos: busca por nome, ASIN ou SKU e preenche o formulário do produto.
+   - Em Clientes: abre edição do cliente encontrado.
+   - Em Fornecedores: abre edição do fornecedor encontrado.
+3. Ações dos pedidos movidas para a primeira coluna, fixa à esquerda, com botões em bloco para não precisar rolar até o final da tabela.
+4. Mantida a rotina de atualização do link/valor de compra no cadastro do produto ao salvar pedido.
 
-1. Ao editar um pedido pela tabela, o sistema agora tenta identificar automaticamente o produto por ID, por nome normalizado e por similaridade de palavras.
-2. Ao digitar/colar o código da compra no campo “Código da compra / Nº pedido”, se o pedido já existir, ele é carregado automaticamente para edição.
-3. Quando o produto é encontrado por nome em um pedido antigo/importado sem produto_id, o sistema grava de volta o vínculo produto_id/nome_produto no pedido.
-4. O seletor de produto é reconstruído antes do preenchimento do formulário para evitar ficar vazio ou perder a opção do produto identificado.
-5. Versão exibida no app atualizada para 13.9.
-
-## Supabase
-
-Não foi criada nenhuma coluna nova nesta versão. Basta subir os arquivos atualizados no GitHub/Vercel.
+Não exige SQL novo no Supabase.

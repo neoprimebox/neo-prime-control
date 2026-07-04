@@ -12,3 +12,8 @@ Correções principais:
 4. Mantida a rotina de atualização do link/valor de compra no cadastro do produto ao salvar pedido.
 
 Não exige SQL novo no Supabase.
+
+
+## v13.9.3
+- Corrigido o filtro de mês do Financeiro para usar campo mês sem lista duplicada visual.
+- Mantidos: filtro por mês, mês atual, limpar filtro, botão limpar contexto, sino removido e contador fixo de mensagens removido.

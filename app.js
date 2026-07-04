@@ -1018,11 +1018,13 @@ function financeAvailableMonths(){
 function syncFinanceMonthFilter(){
   const el=$("financeMonthFilter");
   if(!el) return;
-  const previous=el.value || localStorage.getItem("npc_finance_month") || "all";
-  const months=financeAvailableMonths();
-  const options=['<option value="all">Todos os meses</option>', ...months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`)].join("");
-  if(el.innerHTML!==options) el.innerHTML=options;
-  el.value=months.includes(previous) || previous==="all" ? previous : "all";
+  const stored=localStorage.getItem("npc_finance_month") || "all";
+  const months=financeAvailableMonths().filter(m=>/^\d{4}-\d{2}$/.test(m));
+  if(months.length){
+    el.min=months[months.length-1];
+    el.max=months[0];
+  }
+  el.value=/^\d{4}-\d{2}$/.test(stored) ? stored : "";
 }
 function financeSelectedOrders(){
   const q=searchQuery();
@@ -1643,7 +1645,7 @@ function clearCurrentContext(){
   else if(view==="messages" && typeof clearMessage==="function") clearMessage();
   else if(view==="aiImport" && window.npcClearAi) window.npcClearAi();
   else if(view==="csvImport" && window.npcClearCsv) window.npcClearCsv();
-  else if(view==="finance" && $("financeMonthFilter")){ $("financeMonthFilter").value="all"; localStorage.setItem("npc_finance_month","all"); }
+  else if(view==="finance" && $("financeMonthFilter")){ $("financeMonthFilter").value=""; localStorage.setItem("npc_finance_month","all"); }
   else if(view==="reports"){ if($("reportMode")) $("reportMode").value="month"; if($("reportDay")) $("reportDay").value=today(); if($("reportMonth")) $("reportMonth").value=today().slice(0,7); }
   render();
 }
@@ -1970,7 +1972,7 @@ function updateProductCalcPreview(){
 ["reportMode","reportDay","reportMonth"].forEach(id=>{if($(id)) $(id).addEventListener("change",renderReports);});
 if($("financeMonthFilter")) $("financeMonthFilter").addEventListener("change",()=>{localStorage.setItem("npc_finance_month",$("financeMonthFilter").value||"all");renderFinance();});
 if($("financeCurrentMonthBtn")) $("financeCurrentMonthBtn").onclick=()=>{if($("financeMonthFilter")){ $("financeMonthFilter").value=today().slice(0,7); localStorage.setItem("npc_finance_month",$("financeMonthFilter").value); renderFinance(); }};
-if($("financeClearMonthBtn")) $("financeClearMonthBtn").onclick=()=>{if($("financeMonthFilter")){ $("financeMonthFilter").value="all"; localStorage.setItem("npc_finance_month","all"); renderFinance(); }};
+if($("financeClearMonthBtn")) $("financeClearMonthBtn").onclick=()=>{if($("financeMonthFilter")){ $("financeMonthFilter").value=""; localStorage.setItem("npc_finance_month","all"); renderFinance(); }};
 if($("reportTodayBtn")) $("reportTodayBtn").onclick=()=>{$("reportMode").value="day";$("reportDay").value=today();renderReports();};
 if($("reportCurrentMonthBtn")) $("reportCurrentMonthBtn").onclick=()=>{$("reportMode").value="month";$("reportMonth").value=today().slice(0,7);renderReports();};
 if($("reportDay") && !$("reportDay").value) $("reportDay").value=today();

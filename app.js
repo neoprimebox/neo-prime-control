@@ -1010,8 +1010,33 @@ function saveCustomerEdit(e){
   closeCustomerEdit();
   render();
 }
+function financeAvailableMonths(){
+  const months=[...new Set(read(K.orders).map(o=>monthKey(o.orderDate)).filter(Boolean))]
+    .sort((a,b)=>String(b).localeCompare(String(a)));
+  return months;
+}
+function syncFinanceMonthFilter(){
+  const el=$("financeMonthFilter");
+  if(!el) return;
+  const previous=el.value || localStorage.getItem("npc_finance_month") || "all";
+  const months=financeAvailableMonths();
+  const options=['<option value="all">Todos os meses</option>', ...months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`)].join("");
+  if(el.innerHTML!==options) el.innerHTML=options;
+  el.value=months.includes(previous) || previous==="all" ? previous : "all";
+}
+function financeSelectedOrders(){
+  const q=searchQuery();
+  const selected=$("financeMonthFilter")?.value || localStorage.getItem("npc_finance_month") || "all";
+  return read(K.orders).filter(o=>{
+    const blob=`${o.amazonOrderId} ${o.productName} ${o.customerName} ${o.customerPhone||""} ${o.customerCep||""} ${o.customerCity||""} ${o.customerUf||""} ${supplierName(o.supplierId)} ${orderMarketplace(o)} ${o.status} ${o.trackingCode||""}`;
+    if(!textMatch(blob,q)) return false;
+    if(selected!=="all" && monthKey(o.orderDate)!==selected) return false;
+    return true;
+  }).sort((a,b)=>String(b.orderDate).localeCompare(String(a.orderDate)));
+}
 function renderFinance(){
-  const orders=filteredOrders();
+  syncFinanceMonthFilter();
+  const orders=financeSelectedOrders();
   const rev=orders.reduce((s,o)=>s+revenue(o),0);
   const revProducts=orders.reduce((s,o)=>s+(num(o.salePrice)*lineQuantity(o)),0);
   const revShipping=orders.reduce((s,o)=>s+num(o.saleShipping),0);
@@ -1602,6 +1627,27 @@ function smartOpenFromGlobalSearch(){
   }
   return false;
 }
+function clearCurrentContext(){
+  const gs=$("globalSearch");
+  if(gs && gs.value){
+    gs.value="";
+    orderPage=1;
+    render();
+    gs.focus();
+    return;
+  }
+  const view=activeView();
+  if(view==="orders" && typeof clearOrder==="function") clearOrder();
+  else if(view==="products" && typeof clearProduct==="function") clearProduct();
+  else if(view==="suppliers" && typeof clearSupplier==="function") clearSupplier();
+  else if(view==="messages" && typeof clearMessage==="function") clearMessage();
+  else if(view==="aiImport" && window.npcClearAi) window.npcClearAi();
+  else if(view==="csvImport" && window.npcClearCsv) window.npcClearCsv();
+  else if(view==="finance" && $("financeMonthFilter")){ $("financeMonthFilter").value="all"; localStorage.setItem("npc_finance_month","all"); }
+  else if(view==="reports"){ if($("reportMode")) $("reportMode").value="month"; if($("reportDay")) $("reportDay").value=today(); if($("reportMonth")) $("reportMonth").value=today().slice(0,7); }
+  render();
+}
+if($("clearCurrentBtn")) $("clearCurrentBtn").onclick=clearCurrentContext;
 $("globalSearch").oninput=()=>{orderPage=1;if(activeView()!=="products") lastProductAutoFillQuery="";render();};
 $("globalSearch").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();smartOpenFromGlobalSearch();} if(e.key==="Escape"){$("globalSearch").value="";orderPage=1;render();}};
 $("globalPeriod").onchange=()=>{orderPage=1;render();};$("ordersStatusFilter").onchange=()=>{orderPage=1;renderOrdersTable();};$("ordersPageSize").onchange=()=>{orderPage=1;renderOrdersTable();};$("productStatusFilter").onchange=renderProducts;
@@ -1922,6 +1968,9 @@ function updateProductCalcPreview(){
 ["salePrice","orderQuantity","saleShipping","buyPrice","buyShipping","buyDiscount","amazonFees"].forEach(id=>{if($(id)) $(id).addEventListener("input",updateOrderCalcPreview);});
 ["productSalePrice","productSaleShipping","productBuyPrice","productBuyShipping","productAmazonFees"].forEach(id=>{if($(id)) $(id).addEventListener("input",updateProductCalcPreview);});
 ["reportMode","reportDay","reportMonth"].forEach(id=>{if($(id)) $(id).addEventListener("change",renderReports);});
+if($("financeMonthFilter")) $("financeMonthFilter").addEventListener("change",()=>{localStorage.setItem("npc_finance_month",$("financeMonthFilter").value||"all");renderFinance();});
+if($("financeCurrentMonthBtn")) $("financeCurrentMonthBtn").onclick=()=>{if($("financeMonthFilter")){ $("financeMonthFilter").value=today().slice(0,7); localStorage.setItem("npc_finance_month",$("financeMonthFilter").value); renderFinance(); }};
+if($("financeClearMonthBtn")) $("financeClearMonthBtn").onclick=()=>{if($("financeMonthFilter")){ $("financeMonthFilter").value="all"; localStorage.setItem("npc_finance_month","all"); renderFinance(); }};
 if($("reportTodayBtn")) $("reportTodayBtn").onclick=()=>{$("reportMode").value="day";$("reportDay").value=today();renderReports();};
 if($("reportCurrentMonthBtn")) $("reportCurrentMonthBtn").onclick=()=>{$("reportMode").value="month";$("reportMonth").value=today().slice(0,7);renderReports();};
 if($("reportDay") && !$("reportDay").value) $("reportDay").value=today();

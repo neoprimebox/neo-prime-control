@@ -545,3 +545,8 @@ body.sidebar-collapsed .searchBox{margin-left:0;}
 .quickActionBar button{width:100%;padding:8px 10px;text-align:left;border-radius:10px;font-size:13px;}
 .quickActionBar button:first-child{background:linear-gradient(90deg,var(--blue2),var(--purple));border:0;font-weight:800;}
 #orders .actionGroup{min-width:0;}
+
+/* V13.9.2 - ajustes financeiro e limpeza rápida */
+.financeFilters{margin-bottom:14px;}
+.financeFilterActions label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px;min-width:240px;}
+#clearCurrentBtn{white-space:nowrap;}

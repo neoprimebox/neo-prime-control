@@ -3,7 +3,7 @@ const K={
   suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", purchaseAccounts:"npc_v14_purchase_accounts", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="14.0";
+const APP_VERSION="19.4";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
@@ -2082,3 +2082,177 @@ async function startApp(){
   }
 }
 startApp();
+
+/* ==============================
+   Neo Prime Control v19.4 — AI Edition
+   Camada incremental sem remover a V14.
+   ============================== */
+const NPC_V194_LEADS_KEY="npc_v19_4_supplier_leads";
+const NPC_V194_AI_HISTORY_KEY="npc_v19_4_ai_history";
+function v194ReadLeads(){try{return JSON.parse(localStorage.getItem(NPC_V194_LEADS_KEY)||"[]");}catch(e){return [];}}
+function v194WriteLeads(v){localStorage.setItem(NPC_V194_LEADS_KEY,JSON.stringify(Array.isArray(v)?v:[]));}
+function v194MonthlyStats(){
+  const ym=today().slice(0,7);
+  const orders=read(K.orders).filter(o=>String(o.orderDate||"").slice(0,7)===ym);
+  const rev=orders.reduce((s,o)=>s+revenue(o),0), prof=orders.reduce((s,o)=>s+profit(o),0);
+  return {orders,rev,prof,margin:margin(prof,rev)};
+}
+function v194ProductStatsWithCatalog(){
+  const stats=productStats();
+  const products=read(K.products);
+  return stats.map(s=>({ ...s, product:products.find(p=>p.name===s.name||p.id===s.id) || products.find(p=>p.name===s.name) || null }));
+}
+function v194FbaCandidates(){
+  return v194ProductStatsWithCatalog().filter(x=>x.qty>=15 && x.profit>0).slice(0,8);
+}
+function v194SupplierCandidates(){
+  const products=read(K.products);
+  const stats=v194ProductStatsWithCatalog();
+  return products.map(p=>{
+    const st=stats.find(x=>x.product?.id===p.id || x.name===p.name);
+    const current=productCost(p);
+    const target=Math.max(0,current*.88);
+    const monthly=st?.qty||0;
+    return {p,current,target,monthly,impact:(current-target)*monthly};
+  }).filter(x=>x.current>0).sort((a,b)=>b.impact-a.impact).slice(0,10);
+}
+function v194BuildAiAnswer(prompt){
+  const q=cleanKey(prompt||"");
+  const m=v194MonthlyStats();
+  const top=productStats()[0];
+  if(!q) return "Pode perguntar sobre lucro, fornecedores, produtos para FBA, pedidos com atenção ou resumo do negócio.";
+  if(q.includes("fornecedor")){
+    const rows=v194SupplierCandidates().slice(0,5);
+    if(!rows.length) return "Ainda não encontrei produtos com custo cadastrado suficiente para priorizar fornecedores. Cadastre custo de compra, frete e preço de venda nos produtos.";
+    return "Produtos que mais valem buscar fornecedor melhor:\n"+rows.map((r,i)=>`${i+1}. ${r.p.name} — custo atual ${brl(r.current)}, alvo ${brl(r.target)}, impacto estimado ${brl(r.impact)}/mês`).join("\n")+"\n\nAção sugerida: abra o Radar de Fornecedores e gere buscas qualificadas para o primeiro item.";
+  }
+  if(q.includes("fba")){
+    const rows=v194FbaCandidates();
+    if(!rows.length) return "Ainda não há produto com volume mensal suficiente para eu sugerir FBA com segurança. Eu começaria a analisar quando passar de 15 a 30 vendas/mês.";
+    return "Candidatos para estudar FBA:\n"+rows.map((r,i)=>`${i+1}. ${r.name} — ${r.qty} venda(s), lucro ${brl(r.profit)}, margem ${r.revenue?((r.profit/r.revenue)*100).toFixed(1):0}%`).join("\n")+"\n\nPróximo passo: comparar custo FBA, embalagem, devoluções e giro.";
+  }
+  if(q.includes("lucro")||q.includes("financeiro")||q.includes("mes")){
+    return `Resumo do mês atual:\nPedidos: ${m.orders.length}\nFaturamento: ${brl(m.rev)}\nLucro líquido: ${brl(m.prof)}\nMargem: ${m.margin.toFixed(1)}%\n\nLeitura: ${m.margin<15?"margem baixa; priorize fornecedores e revise taxas Amazon.":m.margin<25?"margem ok, mas ainda existe espaço para reduzir custo de compra.":"margem saudável; foque em escalar produtos vencedores."}`;
+  }
+  if(q.includes("pedido")||q.includes("atencao")||q.includes("atenção")||q.includes("atras")){
+    const late=read(K.orders).filter(o=>!String(o.status||"").toLowerCase().includes("entreg") && o.orderDate && ((new Date()-new Date(o.orderDate+"T00:00:00"))/(864e5)>7));
+    return late.length?`Pedidos com possível atenção: ${late.length}\n`+late.slice(0,6).map(o=>`• ${o.amazonOrderId||"sem código"} — ${o.customerName||"cliente"} — ${o.status}`).join("\n"):"Não encontrei pedidos claramente atrasados pelo critério de mais de 7 dias sem entrega.";
+  }
+  if(q.includes("resumo")||q.includes("negocio")||q.includes("negócio")){
+    return `Resumo geral:\nPedidos cadastrados: ${read(K.orders).length}\nProdutos: ${read(K.products).length}\nClientes: ${read(K.customers).length}\nFornecedores: ${read(K.suppliers).length}\nFaturamento do mês: ${brl(m.rev)}\nLucro do mês: ${brl(m.prof)}\nProduto campeão: ${top?top.name+" ("+top.qty+" vendas)":"-"}\n\nMinha recomendação agora: priorizar Radar de Fornecedores nos produtos com maior giro.`;
+  }
+  if(q.includes("anuncio")||q.includes("anúncio")||q.includes("seo")){
+    return "Para otimizar anúncio Amazon, abra o produto e use estes dados: título atual, bullets, descrição, backend keywords, preço e principais concorrentes. A v19.4 prepara o fluxo; a geração completa de SEO pode entrar como módulo v19.5.";
+  }
+  return "Entendi. Pelo seu momento atual, eu analisaria primeiro: margem do mês, top produtos e fornecedores alternativos. Digite 'fornecedores', 'lucro do mês', 'FBA' ou 'resumo geral'.";
+}
+function v194ReadAiHistory(){try{return JSON.parse(localStorage.getItem(NPC_V194_AI_HISTORY_KEY)||"[]");}catch(e){return [];}}
+function v194WriteAiHistory(v){localStorage.setItem(NPC_V194_AI_HISTORY_KEY,JSON.stringify((v||[]).slice(-40)));}
+function v194AddAiMessage(role,text){const h=v194ReadAiHistory();h.push({role,text,at:new Date().toISOString()});v194WriteAiHistory(h);v194RenderAiMessages();}
+function v194RenderAiMessages(){
+  const h=v194ReadAiHistory();
+  const initial=h.length?h:[{role:"ai",text:"Olá, José! Sou a Neo Prime AI. Posso analisar lucro, fornecedores, FBA, pedidos e oportunidades usando os dados do Neo Prime Control."}];
+  const html=initial.map(m=>`<div class="neoAiMsg ${m.role==='user'?'user':'ai'}"><b>${m.role==='user'?'Você':'Neo Prime AI'}</b><p>${esc(m.text).replace(/\n/g,'<br>')}</p></div>`).join("");
+  ["neoAiDrawerMessages","neoAiPageMessages"].forEach(id=>{const el=$(id); if(el){el.innerHTML=html; el.scrollTop=el.scrollHeight;}});
+}
+function v194AskAi(text){if(!String(text||"").trim()) return; v194AddAiMessage("user",text); setTimeout(()=>v194AddAiMessage("ai",v194BuildAiAnswer(text)),120);}
+function v194OpenAiDrawer(prompt){const d=$("neoAiDrawer"); if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");} v194RenderAiMessages(); if(prompt) v194AskAi(prompt);}
+function v194CloseAiDrawer(){const d=$("neoAiDrawer"); if(d){d.classList.remove("open");d.setAttribute("aria-hidden","true");}}
+function v194SetupAi(){
+  if($("openAiDrawerBtn")) $("openAiDrawerBtn").onclick=()=>v194OpenAiDrawer();
+  if($("neoAiOpenDrawerFromPage")) $("neoAiOpenDrawerFromPage").onclick=()=>v194OpenAiDrawer();
+  if($("closeAiDrawerBtn")) $("closeAiDrawerBtn").onclick=v194CloseAiDrawer;
+  if($("neoAiDrawerSend")) $("neoAiDrawerSend").onclick=()=>{const i=$("neoAiDrawerInput");v194AskAi(i.value);i.value="";};
+  if($("neoAiPageSend")) $("neoAiPageSend").onclick=()=>{const i=$("neoAiPageInput");v194AskAi(i.value);i.value="";};
+  ["neoAiDrawerInput","neoAiPageInput"].forEach(id=>{const i=$(id); if(i) i.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault(); v194AskAi(i.value); i.value="";}};});
+  document.querySelectorAll("[data-ai-prompt]").forEach(b=>{if(!b._v194){b._v194=true;b.addEventListener("click",()=>{const p=b.dataset.aiPrompt; if(activeView()==="neoAI") v194AskAi(p); else v194OpenAiDrawer(p);});}});
+}
+function v194FillRadarFromProduct(){
+  const id=$("radarProductSelect")?.value; const p=read(K.products).find(x=>x.id===id);
+  if(!p) return;
+  if($("radarCurrentCost")) $("radarCurrentCost").value=num(p.buyPrice)||"";
+  if($("radarCurrentShipping")) $("radarCurrentShipping").value=num(p.buyShipping)||"";
+  if($("radarSalePrice")) $("radarSalePrice").value=num(p.salePrice)||"";
+  if($("radarAmazonFee")) $("radarAmazonFee").value=num(p.amazonFees)||"";
+  const stat=productStats().find(s=>s.name===p.name);
+  if($("radarMonthlySales")) $("radarMonthlySales").value=stat?.qty||0;
+}
+function v194RadarContext(){
+  const p=read(K.products).find(x=>x.id===$("radarProductSelect")?.value) || {};
+  const current=num($("radarCurrentCost")?.value)+num($("radarCurrentShipping")?.value);
+  const sale=num($("radarSalePrice")?.value), fee=num($("radarAmazonFee")?.value), monthly=num($("radarMonthlySales")?.value), targetPct=num($("radarTargetSavings")?.value)||12;
+  const target=current*(1-targetPct/100);
+  return {p,current,sale,fee,monthly,targetPct,target,notes:$("radarNotes")?.value||""};
+}
+function v194RenderRadarSummary(){
+  const el=$("radarOpportunitySummary"); if(!el) return;
+  const c=v194RadarContext(); const currentProfit=c.sale-c.current-c.fee; const targetProfit=c.sale-c.target-c.fee; const eco=c.current-c.target;
+  el.innerHTML=`<div class="financeList"><p><span>Produto</span><b>${esc(c.p.name||"Selecione")}</b></p><p><span>Custo atual</span><b>${brl(c.current)}</b></p><p><span>Custo alvo</span><b>${brl(c.target)}</b></p><p><span>Economia alvo/un.</span><b class="success">${brl(eco)}</b></p><p><span>Lucro atual estimado</span><b>${brl(currentProfit)}</b></p><p><span>Lucro com fornecedor melhor</span><b class="success">${brl(targetProfit)}</b></p><hr><p class="profit"><span>Impacto mensal estimado</span><b>${brl(eco*c.monthly)}</b></p></div>`;
+}
+function v194GenerateSearchLinks(){
+  const el=$("radarSearchLinks"); if(!el) return;
+  const c=v194RadarContext(); const base=[c.p.name,c.p.category,c.p.asin,c.notes].filter(Boolean).join(" ");
+  if(!base.trim()){el.innerHTML="<p class='muted'>Selecione um produto para gerar buscas.</p>";return;}
+  const queries=[
+    ["Google — fornecedor atacado", `${base} fornecedor atacado distribuidor importador`],
+    ["Google — fabricante", `${base} fabricante distribuidor oficial`],
+    ["Mercado Livre — atacado", `${base} atacado caixa fechada`],
+    ["Shopee — menor preço", `${base} atacado`],
+    ["Alibaba — importação", `${base} wholesale supplier`],
+    ["Google — dropshipping nacional", `${base} dropshipping nacional fornecedor`]
+  ];
+  const urlFor=(label,q)=> label.includes("Mercado Livre")?`https://lista.mercadolivre.com.br/${encodeURIComponent(q)}`:label.includes("Shopee")?`https://shopee.com.br/search?keyword=${encodeURIComponent(q)}`:label.includes("Alibaba")?`https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(q)}`:`https://www.google.com/search?q=${encodeURIComponent(q)}`;
+  el.innerHTML=queries.map(([label,q])=>`<a target="_blank" rel="noopener" href="${urlFor(label,q)}"><b>${esc(label)}</b><small>${esc(q)}</small></a>`).join("");
+}
+function v194RenderSupplierLeads(){
+  const tb=$("supplierLeadsTable"); if(!tb) return;
+  const c=v194RadarContext(); const leads=v194ReadLeads().filter(l=>!c.p.id || l.productId===c.p.id);
+  tb.innerHTML=leads.map(l=>{const total=num(l.price)+num(l.shipping);const eco=c.current-total;return `<tr><td><b>${esc(l.name)}</b><small>${esc(l.notes||"")}</small></td><td>${esc(l.type||"")}</td><td>${brl(total)}</td><td class="${eco>0?'success':'dangerText'}">${brl(eco)}</td><td>${brl(eco*c.monthly)}</td><td>${esc(l.deadline||"")}</td><td>${esc(l.moq||"")}</td><td>${l.url?`<a href="${esc(l.url)}" target="_blank">Abrir</a>`:"-"}</td><td><div class="actionGroup"><button onclick="v194PromoteLeadToSupplier('${l.id}')">Salvar fornecedor</button><button class="danger" onclick="v194DeleteLead('${l.id}')">Excluir</button></div></td></tr>`}).join("") || `<tr><td colspan="9"><small>Nenhum candidato salvo para este produto. Gere buscas e adicione manualmente os melhores preços encontrados.</small></td></tr>`;
+}
+function v194SaveLead(){
+  const c=v194RadarContext(); if(!c.p.id) return alert("Selecione um produto.");
+  const name=$("leadSupplierName")?.value.trim(); if(!name) return alert("Informe o fornecedor.");
+  const arr=v194ReadLeads(); arr.push({id:uuid(),productId:c.p.id,productName:c.p.name,name,type:$("leadType").value,price:num($("leadPrice").value),shipping:num($("leadShipping").value),deadline:$("leadDeadline").value,moq:$("leadMoq").value,url:$("leadUrl").value,notes:$("leadNotes").value,createdAt:new Date().toISOString()});
+  v194WriteLeads(arr); v194ClearLeadForm(); v194RenderSupplierLeads(); v194RenderDashboardExtras();
+}
+function v194ClearLeadForm(){["leadSupplierName","leadPrice","leadShipping","leadDeadline","leadMoq","leadUrl","leadNotes"].forEach(id=>{if($(id)) $(id).value="";}); const f=$("supplierLeadForm"); if(f) f.style.display="none";}
+function v194DeleteLead(id){v194WriteLeads(v194ReadLeads().filter(l=>l.id!==id));v194RenderSupplierLeads();}
+function v194PromoteLeadToSupplier(id){
+  const l=v194ReadLeads().find(x=>x.id===id); if(!l) return;
+  const arr=read(K.suppliers); const existing=arr.find(s=>cleanKey(s.name)===cleanKey(l.name));
+  const supplier={id:existing?.id||uuid(),name:l.name,type:l.type,contact:"",phone:"",whatsapp:"",email:"",site:l.url||"",leadTime:l.deadline||"",status:"Ativo",notes:`Incluído pelo Radar v19.4. Produto: ${l.productName}. Preço: ${brl(l.price)}. Frete: ${brl(l.shipping)}. Pedido mínimo: ${l.moq||"não informado"}. ${l.notes||""}`,createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+  if(existing){Object.assign(existing,supplier);} else arr.push(supplier);
+  write(K.suppliers,arr); renderSuppliers(); alert("Fornecedor salvo na base de fornecedores.");
+}
+function v194RenderSupplierRadar(){
+  const sel=$("radarProductSelect"); if(!sel) return;
+  const products=sortByName(read(K.products));
+  const current=sel.value;
+  sel.innerHTML='<option value="">Selecione...</option>'+products.map(p=>`<option value="${p.id}">${optionLabelSafe(p.name)}</option>`).join("");
+  if(current) sel.value=current;
+  if(!sel._v194){sel._v194=true;sel.onchange=()=>{v194FillRadarFromProduct();v194RenderRadarSummary();v194GenerateSearchLinks();v194RenderSupplierLeads();};}
+  v194RenderRadarSummary(); v194RenderSupplierLeads();
+}
+function v194RenderDashboardExtras(){
+  // Ajusta textos e adiciona alertas IA sem quebrar cards antigos.
+  const h=document.querySelector("#dashboard .welcome h1"); if(h) h.textContent="Olá, José! 👋";
+  const p=document.querySelector("#dashboard .welcome p"); if(p) p.textContent="Bem-vindo ao Neo Prime Control v19.4 — IA comercial, Radar de Fornecedores e preparação para FBA.";
+}
+function v194SetupRadar(){
+  if($("radarAnalyzeBtn")) $("radarAnalyzeBtn").onclick=()=>{v194RenderRadarSummary();v194GenerateSearchLinks();v194RenderSupplierLeads();};
+  if($("radarSearchBtn")) $("radarSearchBtn").onclick=()=>{v194RenderRadarSummary();v194GenerateSearchLinks();};
+  if($("radarClearBtn")) $("radarClearBtn").onclick=()=>{["radarCurrentCost","radarCurrentShipping","radarSalePrice","radarAmazonFee","radarMonthlySales","radarNotes"].forEach(id=>{if($(id)) $(id).value="";});v194RenderRadarSummary();v194GenerateSearchLinks();};
+  if($("addManualSupplierLeadBtn")) $("addManualSupplierLeadBtn").onclick=()=>{$("supplierLeadForm").style.display="block";};
+  if($("cancelSupplierLeadBtn")) $("cancelSupplierLeadBtn").onclick=v194ClearLeadForm;
+  if($("saveSupplierLeadBtn")) $("saveSupplierLeadBtn").onclick=v194SaveLead;
+}
+function v194RenderAll(){v194SetupAi();v194SetupRadar();v194RenderSupplierRadar();v194RenderAiMessages();v194RenderDashboardExtras();}
+window.v194DeleteLead=v194DeleteLead; window.v194PromoteLeadToSupplier=v194PromoteLeadToSupplier;
+
+// Envelopa render original para incluir a camada v19.4 depois da V14.
+if(typeof render==="function" && !window.__npc_v194_render_wrapped){
+  window.__npc_v194_render_wrapped=true;
+  const __npcOldRender=render;
+  render=function(){__npcOldRender(); v194RenderAll();};
+}
+setTimeout(()=>{try{v194RenderAll();}catch(e){console.warn('V19.4 init',e);}},250);

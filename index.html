@@ -171,6 +171,15 @@
           <label>Cidade<input id="customerCity"></label>
           <label>UF<input id="customerUf" maxlength="2"></label>
           <label>Fornecedor<select id="orderSupplierId"></select></label>
+          <label>Marketplace da compra<select id="purchaseMarketplace">
+            <option value="">Selecione...</option>
+            <option>Shopee</option>
+            <option>TikTok Shop</option>
+            <option>Amazon</option>
+            <option>Mercado Livre</option>
+            <option>Outro</option>
+          </select></label>
+          <label>Conta usada na compra<input id="purchaseAccount" list="purchaseAccountList" placeholder="Ex.: Shopee José / Shopee 02"><datalist id="purchaseAccountList"><option value="Shopee Principal"><option value="Shopee 02"><option value="Shopee 03"><option value="TikTok Principal"><option value="Amazon Compras"></datalist></label>
           <label>Link da compra<input id="buyLink" placeholder="https://..."></label>
           <label>Status<select id="orderStatus">
             <option>Venda realizada Amazon</option>
@@ -230,7 +239,7 @@
         </div>
         <div class="tableWrap">
           <table>
-            <thead><tr><th>Ações</th><th>Data compra</th><th>Código compra</th><th>Produto</th><th>Qtd</th><th>Cliente</th><th>Marketplace</th><th>Status</th><th>Receita</th><th>Amazon</th><th>Fornecedor</th><th>Lucro</th><th>Margem</th><th>Rastreio</th></tr></thead>
+            <thead><tr><th>Ações</th><th>Data compra</th><th>Código compra</th><th>Produto</th><th>Qtd</th><th>Cliente</th><th>Venda</th><th>Conta compra</th><th>Status</th><th>Receita</th><th>Amazon</th><th>Fornecedor</th><th>Lucro</th><th>Margem</th><th>Rastreio</th></tr></thead>
             <tbody id="ordersTable"></tbody>
           </table>
         </div>

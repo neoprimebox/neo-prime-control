@@ -1,9 +1,9 @@
 const K={
   products:"npc_v13_8_products", orders:"npc_v13_8_orders", customers:"npc_v13_8_customers",
-  suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", seeded:"npc_v13_8_seeded"
+  suppliers:"npc_v13_8_suppliers", messages:"npc_v13_8_messages", settings:"npc_v13_8_settings", purchaseAccounts:"npc_v14_purchase_accounts", seeded:"npc_v13_8_seeded"
 };
 const STORE="Neo Prime Box";
-const APP_VERSION="13.8.8";
+const APP_VERSION="14.0";
 const $=id=>document.getElementById(id);
 let NPC_APP_STARTED=false;
 let NPC_SYNC_PAUSED=false;
@@ -724,10 +724,10 @@ function orderFromForm(){
   const p=read(K.products).find(x=>x.id===$("orderProductId").value);
   const old=read(K.orders).find(x=>x.id===$("orderId").value)||{};
   const productName=p?.name || old.productName || "";
-  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value||p?.id||old.productId||"",productName,customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,purchaseMarketplace:$("purchaseMarketplace")?.value||"",purchaseAccount:$("purchaseAccount")?.value||"",buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
+  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value||p?.id||old.productId||"",productName,customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,purchaseMarketplace:"",purchaseAccount:$("purchaseAccount")?.value||"",buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
 }
 $("orderForm").onsubmit=e=>{e.preventDefault();let arr=read(K.orders);let o=resolveOrderProductSelection(orderFromForm());let ix=arr.findIndex(x=>x.id===o.id);if(ix<0 && !confirmIfDuplicate(o,arr,o.id)) return;o.customerId=upsertCustomer(o);ix>=0?arr[ix]=o:arr.push({...o,createdAt:new Date().toISOString()});write(K.orders,arr);updateProductPurchaseFromOrder(o);clearOrder();render();};
-function clearOrder(){ $("orderForm").reset(); $("orderId").value=""; $("orderFormTitle").textContent="Novo pedido Amazon"; $("orderDate").value=today(); ["saleShipping","buyShipping","buyDiscount","amazonFees"].forEach(id=>$(id).value=0); if($("orderQuantity")) $("orderQuantity").value=1; if($("purchaseMarketplace")) $("purchaseMarketplace").value=""; if($("purchaseAccount")) $("purchaseAccount").value="";}
+function clearOrder(){ $("orderForm").reset(); $("orderId").value=""; $("orderFormTitle").textContent="Novo pedido Amazon"; $("orderDate").value=today(); ["saleShipping","buyShipping","buyDiscount","amazonFees"].forEach(id=>$(id).value=0); if($("orderQuantity")) $("orderQuantity").value=1; if($("purchaseAccount")) $("purchaseAccount").value="";}
 $("clearOrderBtn").onclick=clearOrder;$("newOrderBtn").onclick=()=>{clearOrder();document.querySelector(".formPanel").scrollIntoView({behavior:"smooth"});}
 function setFormValues(map){
   Object.entries(map).forEach(([k,v])=>{
@@ -755,7 +755,7 @@ function fillOrderForm(o,{scroll=true}={}){
   const productId=(resolvedProduct?.id || o.productId || "");
   const productName=(resolvedProduct?.name || o.productName || "");
   const supplierId=(o.supplierId || resolvedProduct?.supplierId || "");
-  const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:supplierId,purchaseMarketplace:o.purchaseMarketplace||"",purchaseAccount:o.purchaseAccount||"",buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};
+  const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:supplierId,purchaseAccount:o.purchaseAccount||"",buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};
   setFormValues(map);
   if($('orderProductId')) $('orderProductId').value=productId;
   if($('orderSupplierId')) $('orderSupplierId').value=supplierId;
@@ -880,10 +880,9 @@ function renderOrdersFinancialCards(all){
 }
 
 function purchaseAccountLabel(o){
-  const marketplace=o.purchaseMarketplace||"";
   const account=o.purchaseAccount||"";
-  if(!marketplace && !account) return "<small>não informado</small>";
-  return `${esc(account||"-")}<br><small>${esc(marketplace||"Compra")}</small>`;
+  if(!account) return "<small>não informado</small>";
+  return `${esc(account)}`;
 }
 
 function renderOrdersTable(){
@@ -1934,8 +1933,44 @@ function clearCsv(){
   csvRowsToImport=[];$("csvFile").value="";$("csvPreviewPanel").style.display="none";$("csvPreviewRows").innerHTML="";
 }
 
-function getSettingsFromForm(){return {storeName:$("storeName").value,storeOwner:$("storeOwner").value,storeWhatsapp:$("storeWhatsapp").value,storeWhatsappMode:$("storeWhatsappMode")?.value||"web",storeMarketplace:$("storeMarketplace").value,storeColor:$("storeColor").value,storeStatus:$("storeStatus").value,storeNotes:$("storeNotes").value,updatedAt:new Date().toISOString()};}
-function loadSettings(){const st=JSON.parse(localStorage.getItem(K.settings)||"{}");Object.entries({storeName:st.storeName||"Neo Prime Box",storeOwner:st.storeOwner||"José",storeWhatsapp:st.storeWhatsapp||"+55 21 96869-2887",storeWhatsappMode:st.storeWhatsappMode||"web",storeMarketplace:st.storeMarketplace||"Amazon",storeColor:st.storeColor||"Azul / Roxo",storeStatus:st.storeStatus||"Ativa",storeNotes:st.storeNotes||"Controle de vendas Amazon e dropshipping."}).forEach(([k,v])=>{if($(k)&&v!==undefined)$(k).value=v;});}
+function purchaseAccounts(){
+  try{return JSON.parse(localStorage.getItem(K.purchaseAccounts)||"[]");}catch(e){return [];}
+}
+function savePurchaseAccounts(arr){localStorage.setItem(K.purchaseAccounts,JSON.stringify(arr||[]));}
+function seedPurchaseAccounts(){
+  if(purchaseAccounts().length) return;
+  savePurchaseAccounts([
+    {id:uuid(),platform:"Shopee",name:"Shopee Principal",login:"",notes:"Conta principal"},
+    {id:uuid(),platform:"Shopee",name:"Shopee 02",login:"",notes:"Cupons e descontos"},
+    {id:uuid(),platform:"Shopee",name:"Shopee 03",login:"",notes:"Reserva"}
+  ]);
+}
+function renderPurchaseAccounts(){
+  const arr=purchaseAccounts();
+  if($("purchaseAccount")){
+    const current=$("purchaseAccount").value;
+    $("purchaseAccount").innerHTML='<option value="">Selecione a conta...</option>'+arr.map(a=>`<option value="${esc(a.name)}">${esc(a.name)}${a.platform?` · ${esc(a.platform)}`:""}</option>`).join("");
+    $("purchaseAccount").value=current;
+  }
+  if($("purchaseAccountsTable")){
+    const orders=read(K.orders);
+    $("purchaseAccountsTable").innerHTML=arr.map(a=>{const uso=orders.filter(o=>o.purchaseAccount===a.name).length;return `<tr><td>${esc(a.platform||"-")}</td><td><b>${esc(a.name||"-")}</b></td><td>${esc(a.login||"-")}</td><td>${esc(a.notes||"-")}</td><td>${uso}</td><td><div class="actionGroup"><button onclick="editPurchaseAccount('${a.id}')">Editar</button><button class="danger" onclick="delPurchaseAccount('${a.id}')">Excluir</button></div></td></tr>`}).join("") || `<tr><td colspan="6"><small>Nenhuma conta cadastrada.</small></td></tr>`;
+  }
+}
+function clearPurchaseAccountForm(){["paId","paName","paLogin","paNotes"].forEach(id=>{if($(id)) $(id).value="";}); if($("paPlatform")) $("paPlatform").value="Shopee";}
+function editPurchaseAccount(id){const a=purchaseAccounts().find(x=>x.id===id); if(!a) return; if($("paId")) $("paId").value=a.id; if($("paPlatform")) $("paPlatform").value=a.platform||"Shopee"; if($("paName")) $("paName").value=a.name||""; if($("paLogin")) $("paLogin").value=a.login||""; if($("paNotes")) $("paNotes").value=a.notes||"";}
+function delPurchaseAccount(id){if(!confirm("Excluir esta conta de compra?")) return; savePurchaseAccounts(purchaseAccounts().filter(a=>a.id!==id)); render();}
+function renderSettingsStats(){
+  if($("settingsDbStatus")) $("settingsDbStatus").textContent=supabaseConfigured()?"Configurado":"Não configurado";
+  if($("settingsLastSync")) $("settingsLastSync").textContent=new Date().toLocaleString("pt-BR");
+  if($("settingsOrdersCount")) $("settingsOrdersCount").textContent=read(K.orders).length;
+  if($("settingsProductsCount")) $("settingsProductsCount").textContent=read(K.products).length;
+  if($("settingsCustomersCount")) $("settingsCustomersCount").textContent=read(K.customers).length;
+  if($("settingsSuppliersCount")) $("settingsSuppliersCount").textContent=read(K.suppliers).length;
+}
+
+function getSettingsFromForm(){return {storeName:$("storeName").value,storeOwner:$("storeOwner").value,storeWhatsapp:$("storeWhatsapp").value,storeWhatsappMode:$("storeWhatsappMode")?.value||"web",storeMarketplace:$("storeMarketplace").value,storeNotes:$("storeNotes").value,updatedAt:new Date().toISOString()};}
+function loadSettings(){const st=JSON.parse(localStorage.getItem(K.settings)||"{}");Object.entries({storeName:st.storeName||"Neo Prime Box",storeOwner:st.storeOwner||"José",storeWhatsapp:st.storeWhatsapp||"+55 21 96869-2887",storeWhatsappMode:st.storeWhatsappMode||"web",storeMarketplace:st.storeMarketplace||"Amazon",storeNotes:st.storeNotes||"Controle de vendas Amazon e dropshipping."}).forEach(([k,v])=>{if($(k)&&v!==undefined)$(k).value=v;});}
 function collectBackup(){
   const storage={};
   Object.values(K).forEach(key=>{storage[key]=localStorage.getItem(key)});
@@ -1965,7 +2000,7 @@ function restoreBackup(data){
   if(NPC_APP_STARTED && !NPC_SYNC_PAUSED){["suppliers","products","customers","messages","orders"].forEach(scheduleSupabaseSync);syncSettingsToSupabase();}
 }
 $("settingsForm").onsubmit=e=>{e.preventDefault();localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));syncSettingsToSupabase();alert("Configurações salvas e sincronizadas com Supabase quando configurado.");};
-$("exportBackupBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));const data=collectBackup();const nome=`neo-prime-control-v13-8-banco-json-${today()}.json`;logBackup(data,nome);downloadJson(data,nome);};
+$("exportBackupBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));const data=collectBackup();const nome=`neo-prime-control-v14-banco-json-${today()}.json`;logBackup(data,nome);downloadJson(data,nome);};
 $("testStoreWhatsappBtn").onclick=()=>{localStorage.setItem(K.settings,JSON.stringify(getSettingsFromForm()));testStoreWhatsapp();};
 $("importBackupBtn").onclick=()=>$("importBackupFile").click();$("importBackupFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!confirm("Importar backup e substituir dados atuais? Faça isso apenas com backup confiável."))return;restoreBackup(data);loadSettings();render();alert("Backup importado com sucesso.");}catch(err){alert("Não foi possível importar o backup. Verifique se o arquivo é JSON válido.");}finally{e.target.value="";}};
 
@@ -1999,12 +2034,12 @@ if($("reportDay") && !$("reportDay").value) $("reportDay").value=today();
 if($("reportMonth") && !$("reportMonth").value) $("reportMonth").value=today().slice(0,7);
 
 function render(){
-  renderSelects(); renderDashboard(); renderAmazonMetrics(); renderOrdersTable(); renderProducts(); renderCustomers(); renderSuppliers(); renderMessages(); renderFinance(); renderReports(); renderAnalytics(); updateOrderCalcPreview(); updateProductCalcPreview();
+  renderSelects(); renderPurchaseAccounts(); renderDashboard(); renderAmazonMetrics(); renderOrdersTable(); renderProducts(); renderCustomers(); renderSuppliers(); renderMessages(); renderFinance(); renderReports(); renderAnalytics(); renderSettingsStats(); updateOrderCalcPreview(); updateProductCalcPreview();
 }
 window.editOrder=editOrder;window.smartOpenFromGlobalSearch=smartOpenFromGlobalSearch;window.delOrder=delOrder;window.markSent=markSent;window.sendWa=sendWa;window.sendTrackingWa=sendTrackingWa;window.testStoreWhatsapp=testStoreWhatsapp;
 window.refreshWaPreview=refreshWaPreview;window.confirmWhatsappMessage=confirmWhatsappMessage;window.closeWhatsappMessage=closeWhatsappMessage;
 window.editProduct=editProduct;window.delProduct=delProduct;window.archiveProduct=archiveProduct;
-window.editSupplier=editSupplier;window.delSupplier=delSupplier;window.editMessage=editMessage;window.delMessage=delMessage;
+window.editSupplier=editSupplier;window.delSupplier=delSupplier;window.editMessage=editMessage;window.delMessage=delMessage;window.editPurchaseAccount=editPurchaseAccount;window.delPurchaseAccount=delPurchaseAccount;
 window.openCustomerOrders=openCustomerOrders;window.openCustomerEdit=openCustomerEdit;window.closeCustomerOrders=closeCustomerOrders;window.closeCustomerEdit=closeCustomerEdit;
 
 // V12.1 - fallback final: se algum navegador perder o onclick, o clique ainda funciona por delegação.
@@ -2026,6 +2061,10 @@ async function startApp(){
   if($("cancelCustomerEditBtn")) $("cancelCustomerEditBtn").onclick=closeCustomerEdit;
   if($("customerEditForm")) $("customerEditForm").onsubmit=saveCustomerEdit;
   setupAi();
+  seedPurchaseAccounts();
+  if($("purchaseAccountForm")) $("purchaseAccountForm").onsubmit=e=>{e.preventDefault();const arr=purchaseAccounts();const a={id:$("paId").value||uuid(),platform:$("paPlatform").value,name:$("paName").value,login:$("paLogin").value,notes:$("paNotes").value}; if(!a.name.trim()) return alert("Informe o nome da conta."); const ix=arr.findIndex(x=>x.id===a.id); ix>=0?arr[ix]=a:arr.push(a); savePurchaseAccounts(arr); clearPurchaseAccountForm(); render();};
+  if($("clearPurchaseAccountBtn")) $("clearPurchaseAccountBtn").onclick=clearPurchaseAccountForm;
+  if($("addPurchaseAccountBtn")) $("addPurchaseAccountBtn").onclick=clearPurchaseAccountForm;
   updateSearchPlaceholder();
 
   if(supabaseConfigured()){

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Neo Prime Control v13.9</title>
+  <title>Neo Prime Control v14.0</title>
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -18,6 +18,7 @@
     <nav class="sideNav">
       <button class="nav active" data-view="dashboard"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h5v-6h4v6h5v-9.5"/></svg></span><span>Dashboard</span></button>
       <button class="nav" data-view="orders"><span class="navIcon"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 8H7"/></svg></span><span>Pedidos</span></button>
+      <button class="nav" data-view="operations"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/><path d="M16 16l2 2 4-4"/></svg></span><span>Central de Operações</span><b class="tag">V14</b></button>
       <button class="nav" data-view="products"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.5 7.5 4.3 7.5-4.3"/><path d="M12 12v8.5"/></svg></span><span>Produtos</span></button>
       <button class="nav" data-view="customers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Clientes</span></button>
       <button class="nav" data-view="suppliers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 7h11v10H3z"/><path d="M14 10h3l4 4v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span>Fornecedores</span></button>
@@ -56,9 +57,15 @@
 
     <section id="dashboard" class="view active">
       <div class="welcome">
-        <h1>Bem-vindo(a), Neo Prime Box! 👋</h1>
-        <p>Aqui está o resumo completo da sua operação Amazon.</p>
+        <h1>Neo Prime Control v14.0 👋</h1>
+        <p>Central de controle para sua operação de dropshipping na Amazon, preparada para crescer para estoque próprio e FBA no futuro.</p>
       </div>
+      <section class="todayGrid" id="todayActionPanel">
+        <article><span>Comprar produtos</span><b id="todoBuy">0</b><small>Vendas ainda pendentes de compra</small></article>
+        <article><span>Enviar rastreios</span><b id="todoTracking">0</b><small>Pedidos comprados sem rastreio enviado</small></article>
+        <article><span>Pedidos atrasados</span><b id="todoLate">0</b><small>Mais de 7 dias sem entrega</small></article>
+        <article><span>Problemas/Reembolso</span><b id="todoProblems">0</b><small>Pedidos com atenção especial</small></article>
+      </section>
 
       <section class="kpiGrid">
         <article class="kpi blue"><div class="kpiIcon">🛒</div><span>Vendas totais</span><strong id="kpiRevenue">R$ 0,00</strong><small id="kpiRevenueSub">Receita do período</small></article>
@@ -171,15 +178,7 @@
           <label>Cidade<input id="customerCity"></label>
           <label>UF<input id="customerUf" maxlength="2"></label>
           <label>Fornecedor<select id="orderSupplierId"></select></label>
-          <label>Marketplace da compra<select id="purchaseMarketplace">
-            <option value="">Selecione...</option>
-            <option>Shopee</option>
-            <option>TikTok Shop</option>
-            <option>Amazon</option>
-            <option>Mercado Livre</option>
-            <option>Outro</option>
-          </select></label>
-          <label>Conta usada na compra<input id="purchaseAccount" list="purchaseAccountList" placeholder="Ex.: Shopee José / Shopee 02"><datalist id="purchaseAccountList"><option value="Shopee Principal"><option value="Shopee 02"><option value="Shopee 03"><option value="TikTok Principal"><option value="Amazon Compras"></datalist></label>
+          <label>Conta usada na compra<select id="purchaseAccount"><option value="">Selecione a conta...</option></select></label>
           <label>Link da compra<input id="buyLink" placeholder="https://..."></label>
           <label>Status<select id="orderStatus">
             <option>Venda realizada Amazon</option>
@@ -244,6 +243,20 @@
           </table>
         </div>
         <div id="ordersPagination" class="pagination"></div>
+      </article>
+    </section>
+
+    <section id="operations" class="view">
+      <div class="pageHeader"><div><h1>Central de Operações Dropshipping</h1><p>Veja o que precisa comprar, rastrear e acompanhar sem depender de estoque/FBA.</p></div></div>
+      <section class="kpiGrid compactKpis">
+        <article class="kpi orange"><div class="kpiIcon">🛒</div><span>Compra pendente</span><strong id="opsPendingBuy">0</strong><small>vendas para comprar</small></article>
+        <article class="kpi blue"><div class="kpiIcon">🔗</div><span>Com link fornecedor</span><strong id="opsWithLink">0</strong><small>prontas para abrir</small></article>
+        <article class="kpi purple"><div class="kpiIcon">🚚</div><span>Aguardando rastreio</span><strong id="opsPendingTracking">0</strong><small>compras em andamento</small></article>
+        <article class="kpi green"><div class="kpiIcon">✅</div><span>Finalizados</span><strong id="opsDone">0</strong><small>entregues ou concluídos</small></article>
+      </section>
+      <article class="panel">
+        <div class="panelHeader"><h2>Fila operacional</h2><div class="tableTools"><select id="opsFilter"><option value="all">Todos</option><option value="buy">Comprar</option><option value="tracking">Aguardando rastreio</option><option value="problem">Problemas</option></select></div></div>
+        <div class="tableWrap"><table><thead><tr><th>Ações</th><th>Pedido</th><th>Produto</th><th>Fornecedor</th><th>Conta</th><th>Status</th><th>Rastreio</th><th>Lucro</th></tr></thead><tbody id="operationsTable"></tbody></table></div>
       </article>
     </section>
 
@@ -576,22 +589,48 @@
     </section>
 
     <section id="settings" class="view">
-      <div class="pageHeader"><div><h1>Configurações</h1><p>Dados básicos da operação.</p></div></div>
-      <article class="panel formPanel">
-        <form id="settingsForm" class="formGrid">
-          <label>Nome da loja<input id="storeName" value="Neo Prime Box"></label>
-          <label>Responsável<input id="storeOwner" value="José"></label>
-          <label>WhatsApp da loja<input id="storeWhatsapp" value="+55 21 96869-2887" placeholder="+55 21 96869-2887"></label>
-          <label>Abrir WhatsApp por<select id="storeWhatsappMode"><option value="web">WhatsApp Web</option><option value="wa">App / wa.me</option></select></label>
-          <label>Marketplace principal<input id="storeMarketplace" value="Amazon"></label>
-          <label>Cor principal<input id="storeColor" value="Azul / Roxo"></label>
-          <label>Status<select id="storeStatus"><option>Ativa</option><option>Pausada</option></select></label>
-          <label class="full">Observações<textarea id="storeNotes">Controle de vendas Amazon e dropshipping.</textarea></label>
-          <div class="full backupInfo"><strong>WhatsApp da loja</strong><br><span>O app abre a conversa pelo WhatsApp Web com a mensagem pronta. Para sair pelo número da loja, mantenha o WhatsApp Web logado no número +55 21 96869-2887. O sistema não envia automaticamente e não força o remetente.</span></div>
-          <div class="full backupInfo"><strong>Banco/Backup JSON V13.2</strong><br><span>Use Exportar Banco JSON para guardar seus dados em arquivo e migrar depois para Vercel/Supabase. O JSON leva produtos, pedidos, clientes, fornecedores, mensagens e configurações.</span></div>
-          <div class="full actions"><button class="primary" type="submit">Salvar configurações</button><button type="button" id="testStoreWhatsappBtn">Testar WhatsApp da loja</button><button type="button" id="exportBackupBtn">Exportar banco JSON</button><button type="button" id="importBackupBtn">Importar banco JSON</button><input id="importBackupFile" type="file" accept=".json" hidden></div>
-        </form>
-      </article>
+      <div class="pageHeader"><div><h1>Configurações</h1><p>Configurações úteis para sua operação de dropshipping. Campos sem função foram removidos na v14.</p></div></div>
+      <section class="settingsGrid">
+        <article class="panel formPanel">
+          <div class="panelHeader"><h2>Geral</h2></div>
+          <form id="settingsForm" class="formGrid">
+            <label>Nome da loja<input id="storeName" value="Neo Prime Box"></label>
+            <label>Responsável<input id="storeOwner" value="José"></label>
+            <label>WhatsApp da loja<input id="storeWhatsapp" value="+55 21 96869-2887" placeholder="+55 21 96869-2887"></label>
+            <label>Abrir WhatsApp por<select id="storeWhatsappMode"><option value="web">WhatsApp Web</option><option value="wa">App / wa.me</option></select></label>
+            <label>Marketplace principal<input id="storeMarketplace" value="Amazon"></label>
+            <label class="full">Observações<textarea id="storeNotes">Controle de vendas Amazon e dropshipping.</textarea></label>
+            <div class="full backupInfo"><strong>WhatsApp da loja</strong><br><span>O app abre a conversa pelo WhatsApp Web com a mensagem pronta. Para sair pelo número da loja, mantenha o WhatsApp Web logado no número configurado.</span></div>
+            <div class="full actions"><button class="primary" type="submit">Salvar configurações</button><button type="button" id="testStoreWhatsappBtn">Testar WhatsApp da loja</button><button type="button" id="exportBackupBtn">Exportar banco JSON</button><button type="button" id="importBackupBtn">Importar banco JSON</button><input id="importBackupFile" type="file" accept=".json" hidden></div>
+          </form>
+        </article>
+        <article class="panel">
+          <div class="panelHeader"><h2>Operação</h2></div>
+          <div class="operationStats">
+            <p><span>Versão do sistema</span><b>v14.0</b></p>
+            <p><span>Tipo atual</span><b>Dropshipping</b></p>
+            <p><span>Banco conectado</span><b id="settingsDbStatus">Verificando...</b></p>
+            <p><span>Última sincronização</span><b id="settingsLastSync">-</b></p>
+            <p><span>Pedidos cadastrados</span><b id="settingsOrdersCount">0</b></p>
+            <p><span>Produtos cadastrados</span><b id="settingsProductsCount">0</b></p>
+            <p><span>Clientes cadastrados</span><b id="settingsCustomersCount">0</b></p>
+            <p><span>Fornecedores cadastrados</span><b id="settingsSuppliersCount">0</b></p>
+          </div>
+          <div class="backupInfo"><strong>Preparado para o futuro</strong><br><span>A v14 mantém o foco em dropshipping, mas já deixa o conceito de tipo de operação preparado para Estoque Próprio e FBA em versões futuras.</span></div>
+        </article>
+        <article class="panel formPanel fullSettings">
+          <div class="panelHeader"><h2>Contas de Compra</h2><button type="button" id="addPurchaseAccountBtn" class="primary">Adicionar conta</button></div>
+          <form id="purchaseAccountForm" class="formGrid">
+            <input type="hidden" id="paId">
+            <label>Plataforma<select id="paPlatform"><option>Shopee</option><option>TikTok Shop</option><option>Amazon</option><option>Mercado Livre</option><option>Outro</option></select></label>
+            <label>Nome da conta<input id="paName" placeholder="Ex.: Shopee José"></label>
+            <label>Login / referência<input id="paLogin" placeholder="email, telefone ou apelido"></label>
+            <label class="full">Observação<input id="paNotes" placeholder="Principal, cupons, reserva..."></label>
+            <div class="full actions"><button class="primary" type="submit">Salvar conta</button><button type="button" id="clearPurchaseAccountBtn">Limpar</button></div>
+          </form>
+          <div class="tableWrap"><table><thead><tr><th>Plataforma</th><th>Conta</th><th>Login</th><th>Observação</th><th>Uso</th><th>Ações</th></tr></thead><tbody id="purchaseAccountsTable"></tbody></table></div>
+        </article>
+      </section>
     </section>
   
 

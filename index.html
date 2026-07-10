@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Neo Prime Control v19.4 - AI Edition</title>
+  <title>Neo Prime Control v20 Beta - Agent Edition</title>
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -18,6 +18,7 @@
     <nav class="sideNav">
       <button class="nav active" data-view="dashboard"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h5v-6h4v6h5v-9.5"/></svg></span><span>Dashboard</span></button>
       <button class="nav" data-view="orders"><span class="navIcon"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 8H7"/></svg></span><span>Pedidos</span></button>
+      <button class="nav" data-view="agents"><span class="navIcon navIconGlow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg></span><span>Central de Agentes</span></button>
       <button class="nav" data-view="operations"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/><path d="M16 16l2 2 4-4"/></svg></span><span>Central de Operações</span></button>
       <button class="nav" data-view="products"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.5 7.5 4.3 7.5-4.3"/><path d="M12 12v8.5"/></svg></span><span>Produtos</span></button>
       <button class="nav" data-view="customers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Clientes</span></button>
@@ -60,7 +61,7 @@
     <section id="dashboard" class="view active">
       <div class="welcome">
         <h1>Olá, José! 👋</h1>
-        <p>Bem-vindo ao Neo Prime Control v19.4 — IA comercial acoplada, Radar de Fornecedores e preparação para FBA.</p>
+        <p>Bem-vindo ao Neo Prime Control v20 Beta — agentes de vendas, fornecedores e decisão.</p>
       </div>
       <section class="todayGrid" id="todayActionPanel">
         <article><span>Comprar produtos</span><b id="todoBuy">0</b><small>Vendas ainda pendentes de compra</small></article>
@@ -186,6 +187,8 @@
           <label>Cidade<input id="customerCity"></label>
           <label>UF<input id="customerUf" maxlength="2"></label>
           <label>Fornecedor<select id="orderSupplierId"></select></label>
+          <label>Marketplace da compra<select id="purchaseMarketplace"><option value="">Selecione...</option><option>Shopee</option><option>TikTok Shop</option><option>Mercado Livre</option><option>Amazon</option><option>Outro</option></select></label>
+          <label>Nº do pedido no fornecedor<input id="marketplaceOrderId" placeholder="Ex.: 240709ABC123"></label>
           <label>Conta usada na compra<select id="purchaseAccount"><option value="">Selecione a conta...</option></select></label>
           <label>Link da compra<input id="buyLink" placeholder="https://..."></label>
           <label>Status<select id="orderStatus">
@@ -246,12 +249,37 @@
         </div>
         <div class="tableWrap">
           <table>
-            <thead><tr><th>Ações</th><th>Data compra</th><th>Código compra</th><th>Produto</th><th>Qtd</th><th>Cliente</th><th>Venda</th><th>Conta compra</th><th>Status</th><th>Receita</th><th>Amazon</th><th>Fornecedor</th><th>Lucro</th><th>Margem</th><th>Rastreio</th></tr></thead>
+            <thead><tr><th>Ações</th><th>Data compra</th><th>Pedido Amazon</th><th>Pedido fornecedor</th><th>Produto</th><th>Qtd</th><th>Cliente</th><th>Venda</th><th>Conta compra</th><th>Status</th><th>Receita</th><th>Amazon</th><th>Fornecedor</th><th>Lucro</th><th>Margem</th><th>Rastreio</th></tr></thead>
             <tbody id="ordersTable"></tbody>
           </table>
         </div>
         <div id="ordersPagination" class="pagination"></div>
       </article>
+    </section>
+
+
+    <section id="agents" class="view">
+      <div class="pageHeader"><div><h1>Central de Agentes · v20 Beta</h1><p>Leitura de novas vendas, comparação de fornecedores e decisão assistida de compra.</p></div><button class="primary" id="runAgentsBtn" type="button">Executar agentes agora</button></div>
+      <section class="kpiGrid compactKpis">
+        <article class="kpi blue"><div class="kpiIcon">🛰️</div><span>Agente de vendas</span><strong id="agentSalesCount">0</strong><small id="agentSalesStatus">SP-API não configurada</small></article>
+        <article class="kpi orange"><div class="kpiIcon">🔎</div><span>Comparações prontas</span><strong id="agentCompareCount">0</strong><small>pedidos com opções analisadas</small></article>
+        <article class="kpi purple"><div class="kpiIcon">🧠</div><span>Decisões pendentes</span><strong id="agentDecisionCount">0</strong><small>aguardando sua aprovação</small></article>
+        <article class="kpi green"><div class="kpiIcon">✅</div><span>Compras aprovadas</span><strong id="agentApprovedCount">0</strong><small>decisões registradas</small></article>
+      </section>
+      <article class="panel agentConfigPanel">
+        <div class="panelHeader"><div><h2>Agente de novas vendas</h2><small class="muted">Modo Beta: pronto para consumir um endpoint backend conectado à Amazon SP-API. Sem credenciais, permite importar uma venda simulada para testar o fluxo.</small></div></div>
+        <div class="formGrid">
+          <label>Endpoint seguro do backend<input id="amazonAgentEndpoint" placeholder="https://seu-backend/api/amazon/orders"></label>
+          <label>Intervalo desejado<select id="amazonAgentInterval"><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option></select></label>
+          <label class="full">JSON de venda para teste<textarea id="agentOrderJson" placeholder='{"amazonOrderId":"701-...","productName":"Produto","customerName":"Cliente","salePrice":99.90}'></textarea></label>
+          <div class="full actions"><button id="testAmazonAgentBtn" type="button">Testar conexão</button><button id="importAgentOrderBtn" class="primary" type="button">Importar venda de teste</button></div>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panelHeader"><div><h2>Fila de decisão</h2><small class="muted">O comparador usa o fornecedor padrão do produto e os candidatos salvos no Radar de Fornecedores.</small></div><select id="agentDecisionFilter"><option value="pending">Pendentes</option><option value="all">Todas</option><option value="approved">Aprovadas</option></select></div>
+        <div class="tableWrap"><table><thead><tr><th>Pedido</th><th>Produto</th><th>Venda</th><th>Melhor fornecedor</th><th>Custo total</th><th>Economia</th><th>Lucro previsto</th><th>Decisão</th><th>Ações</th></tr></thead><tbody id="agentDecisionTable"></tbody></table></div>
+      </article>
+      <article class="panel"><div class="panelHeader"><h2>Histórico dos agentes</h2><button id="clearAgentLogBtn" type="button">Limpar histórico</button></div><div id="agentLog" class="agentLog"></div></article>
     </section>
 
     <section id="operations" class="view">

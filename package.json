@@ -1,0 +1,8 @@
+{
+  "name": "neo-prime-control-v21-beta",
+  "version": "21.0.2",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  }
+}

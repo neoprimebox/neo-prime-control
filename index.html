@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Neo Prime Control v20 Beta - Agent Edition</title>
+  <title>Neo Prime Control v21 Beta - Amazon Connected Edition</title>
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -19,6 +19,7 @@
       <button class="nav active" data-view="dashboard"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h5v-6h4v6h5v-9.5"/></svg></span><span>Dashboard</span></button>
       <button class="nav" data-view="orders"><span class="navIcon"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 8H7"/></svg></span><span>Pedidos</span></button>
       <button class="nav" data-view="agents"><span class="navIcon navIconGlow"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg></span><span>Central de Agentes</span></button>
+      <button class="nav" data-view="amazonIntegration"><span class="navIcon navIconGlow">🛍️</span><span>Amazon Seller</span></button>
       <button class="nav" data-view="operations"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/><path d="M16 16l2 2 4-4"/></svg></span><span>Central de Operações</span></button>
       <button class="nav" data-view="products"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.5 7.5 4.3 7.5-4.3"/><path d="M12 12v8.5"/></svg></span><span>Produtos</span></button>
       <button class="nav" data-view="customers"><span class="navIcon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Clientes</span></button>
@@ -259,7 +260,7 @@
 
 
     <section id="agents" class="view">
-      <div class="pageHeader"><div><h1>Central de Agentes · v20 Beta</h1><p>Leitura de novas vendas, comparação de fornecedores e decisão assistida de compra.</p></div><button class="primary" id="runAgentsBtn" type="button">Executar agentes agora</button></div>
+      <div class="pageHeader"><div><h1>Central de Agentes · v21 Beta</h1><p>Leitura de novas vendas, comparação de fornecedores e decisão assistida de compra.</p></div><button class="primary" id="runAgentsBtn" type="button">Executar agentes agora</button></div>
       <section class="kpiGrid compactKpis">
         <article class="kpi blue"><div class="kpiIcon">🛰️</div><span>Agente de vendas</span><strong id="agentSalesCount">0</strong><small id="agentSalesStatus">SP-API não configurada</small></article>
         <article class="kpi orange"><div class="kpiIcon">🔎</div><span>Comparações prontas</span><strong id="agentCompareCount">0</strong><small>pedidos com opções analisadas</small></article>
@@ -280,6 +281,32 @@
         <div class="tableWrap"><table><thead><tr><th>Pedido</th><th>Produto</th><th>Venda</th><th>Melhor fornecedor</th><th>Custo total</th><th>Economia</th><th>Lucro previsto</th><th>Decisão</th><th>Ações</th></tr></thead><tbody id="agentDecisionTable"></tbody></table></div>
       </article>
       <article class="panel"><div class="panelHeader"><h2>Histórico dos agentes</h2><button id="clearAgentLogBtn" type="button">Limpar histórico</button></div><div id="agentLog" class="agentLog"></div></article>
+    </section>
+
+
+    <section id="amazonIntegration" class="view">
+      <div class="pageHeader"><div><h1>Amazon Seller · V21 Beta</h1><p>Conecte sua conta, consulte o catálogo e vincule ASIN e SKU aos produtos do Neo Prime Control.</p></div><span id="amazonConnectionBadge" class="status pending">Não conectado</span></div>
+      <section class="kpiGrid compactKpis">
+        <article class="kpi blue"><div class="kpiIcon">🔐</div><span>Conexão</span><strong id="amazonConnectionKpi">Offline</strong><small id="amazonConnectionDetail">Backend não verificado</small></article>
+        <article class="kpi green"><div class="kpiIcon">📦</div><span>Produtos Amazon</span><strong id="amazonCatalogCount">0</strong><small>itens recebidos na última consulta</small></article>
+        <article class="kpi purple"><div class="kpiIcon">🔗</div><span>Produtos vinculados</span><strong id="amazonLinkedCount">0</strong><small>catálogo local com ASIN ou SKU</small></article>
+        <article class="kpi orange"><div class="kpiIcon">🕒</div><span>Última sincronização</span><strong id="amazonLastSync">Nunca</strong><small id="amazonSyncMessage">Nenhuma sincronização realizada</small></article>
+      </section>
+      <article class="panel formPanel">
+        <div class="panelHeader"><div><h2>Configuração da conexão</h2><small class="muted">As credenciais e o refresh token ficam no backend. O navegador não armazena o segredo da Amazon.</small></div></div>
+        <div class="formGrid">
+          <label>URL do backend<input id="amazonBackendBase" placeholder="Ex.: https://neo-prime-control.vercel.app"></label>
+          <label>Marketplace<select id="amazonMarketplace"><option value="A2Q3Y263D00KWC">Amazon Brasil</option></select></label>
+          <label>Sincronização automática<select id="amazonAutoSync"><option value="off">Desativada</option><option value="15">A cada 15 minutos</option><option value="30">A cada 30 minutos</option><option value="60">A cada 60 minutos</option></select></label>
+          <label>Modo de importação<select id="amazonImportMode"><option value="update">Criar novos e atualizar existentes</option><option value="new">Somente criar produtos novos</option><option value="preview">Apenas visualizar</option></select></label>
+          <div class="full actions"><button id="amazonConnectBtn" class="primary" type="button">Conectar conta Amazon</button><button id="amazonCheckBtn" type="button">Verificar conexão</button><button id="amazonDisconnectBtn" class="danger" type="button">Desconectar</button></div>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panelHeader"><div><h2>Conteúdo de produtos da loja</h2><small class="muted">A sincronização identifica produtos por SKU, depois por ASIN, evitando duplicidades.</small></div><div class="actions"><button id="amazonLoadCatalogBtn" type="button">Consultar catálogo</button><button id="amazonSyncCatalogBtn" class="primary" type="button">Sincronizar produtos</button></div></div>
+        <div class="tableWrap"><table><thead><tr><th>Produto Amazon</th><th>ASIN</th><th>SKU</th><th>Preço</th><th>Status</th><th>Vínculo local</th><th>Ação</th></tr></thead><tbody id="amazonCatalogTable"><tr><td colspan="7"><small>Conecte a conta e consulte o catálogo.</small></td></tr></tbody></table></div>
+      </article>
+      <article class="panel"><div class="panelHeader"><h2>Registro da integração</h2><button id="amazonClearLogBtn" type="button">Limpar registro</button></div><div id="amazonIntegrationLog" class="agentLog"></div></article>
     </section>
 
     <section id="operations" class="view">
@@ -844,7 +871,7 @@
     </aside>
       <footer class="appFooter">
       <span>© 2025 Neo Prime Box. Todos os direitos reservados.</span>
-      <span>Versão 19.4 AI Edition</span>
+      <span>Versão 21 Beta · Amazon Connected Edition</span>
     </footer>
   </main>
 

@@ -1,0 +1,1 @@
+const {getRefreshToken,sellerContext,json}=require('./_lib');module.exports=async(req,res)=>{try{if(!getRefreshToken(req))return json(res,200,{connected:false,message:'Autorize sua conta Amazon.'});const c=await sellerContext(req);json(res,200,{connected:true,...c});}catch(e){json(res,500,{connected:false,error:e.message});}};

@@ -566,3 +566,6 @@ body{background:radial-gradient(circle at 88% -12%,rgba(123,44,255,.24),transpar
 
 /* V20 Beta — Central de Agentes */
 .agentConfigPanel{border-left:4px solid #2563eb}.agentLog{display:grid;gap:8px}.agentLog>div{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border:1px solid var(--border,#e5e7eb);border-radius:10px;background:#fff}.agentLog small{white-space:nowrap;color:#64748b}.agentConfigPanel textarea{min-height:110px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.status.pending{background:#fff7ed;color:#c2410c}.status.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.agentLog>div{display:block}.agentLog small{display:block;margin-top:4px}}
+
+/* V21 Amazon Connected */
+#amazonConnectionBadge{align-self:flex-start;font-size:14px;padding:9px 14px}.pageHeader .actions{display:flex;gap:8px;flex-wrap:wrap}.navIcon:has(+ span){flex-shrink:0}

@@ -569,3 +569,23 @@ body{background:radial-gradient(circle at 88% -12%,rgba(123,44,255,.24),transpar
 
 /* V21 Amazon Connected */
 #amazonConnectionBadge{align-self:flex-start;font-size:14px;padding:9px 14px}.pageHeader .actions{display:flex;gap:8px;flex-wrap:wrap}.navIcon:has(+ span){flex-shrink:0}
+
+
+/* V21.1 - datas mais visíveis em todos os formulários */
+input[type="date"]{
+  color-scheme:dark;
+  padding-right:12px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  opacity:1;
+  filter:invert(84%) sepia(52%) saturate(1200%) hue-rotate(165deg) brightness(112%) contrast(104%);
+  background-color:rgba(102,199,255,.14);
+  border:1px solid rgba(102,199,255,.45);
+  border-radius:7px;
+  padding:5px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover{
+  background-color:rgba(102,199,255,.28);
+  box-shadow:0 0 12px rgba(102,199,255,.35);
+}

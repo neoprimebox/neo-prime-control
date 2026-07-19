@@ -55,7 +55,13 @@ const uuid=()=>crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.rand
 const num=v=>Number(String(v||"0").replace(",", "."))||0;
 const brl=v=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(num(v));
 const esc=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+};
 const lineQuantity=o=>Math.max(1, num(o.quantity)||1);
 // V13.2: receita real considera a coluna Total do CSV quando existe.
 // Se não existir, calcula preço unitário x quantidade + frete.
@@ -160,7 +166,7 @@ function jsToDb(name,x){
   return null;
 }
 function customerNotesToDb(x){
-  const extras={cep:x.cep||"", address:x.address||"", number:x.number||"", complement:x.complement||"", district:x.district||"", city:x.city||"", uf:x.uf||"", notes:x.notes||""};
+  const extras={cpf:x.cpf||"", cep:x.cep||"", address:x.address||"", number:x.number||"", complement:x.complement||"", district:x.district||"", city:x.city||"", uf:x.uf||"", notes:x.notes||""};
   const hasExtras=Object.values(extras).some(Boolean);
   return hasExtras?`NPC_EXTRA:${JSON.stringify(extras)}`:(x.notes||null);
 }
@@ -171,23 +177,23 @@ function customerNotesFromDb(v){
 }
 
 function orderNotesToDb(x){
-  const extras={purchaseMarketplace:x.purchaseMarketplace||"", purchaseAccount:x.purchaseAccount||"", marketplaceOrderId:x.marketplaceOrderId||"", agentDecision:x.agentDecision||"", notes:x.notes||""};
-  const hasExtras=extras.purchaseMarketplace || extras.purchaseAccount || extras.marketplaceOrderId || extras.agentDecision;
+  const extras={customerCpf:x.customerCpf||"", purchaseMarketplace:x.purchaseMarketplace||"", purchaseAccount:x.purchaseAccount||"", marketplaceOrderId:x.marketplaceOrderId||"", agentDecision:x.agentDecision||"", notes:x.notes||""};
+  const hasExtras=extras.customerCpf || extras.purchaseMarketplace || extras.purchaseAccount || extras.marketplaceOrderId || extras.agentDecision;
   return hasExtras?`NPC_ORDER_EXTRA:${JSON.stringify(extras)}`:(x.notes||null);
 }
 function orderNotesFromDb(v){
   const s=String(v||"");
-  if(!s.startsWith("NPC_ORDER_EXTRA:")) return {notes:s, purchaseMarketplace:"", purchaseAccount:"", marketplaceOrderId:"", agentDecision:""};
-  try{return JSON.parse(s.slice("NPC_ORDER_EXTRA:".length));}catch(e){return {notes:s, purchaseMarketplace:"", purchaseAccount:"", marketplaceOrderId:"", agentDecision:""};}
+  if(!s.startsWith("NPC_ORDER_EXTRA:")) return {notes:s, customerCpf:"", purchaseMarketplace:"", purchaseAccount:"", marketplaceOrderId:"", agentDecision:""};
+  try{return JSON.parse(s.slice("NPC_ORDER_EXTRA:".length));}catch(e){return {notes:s, customerCpf:"", purchaseMarketplace:"", purchaseAccount:"", marketplaceOrderId:"", agentDecision:""};}
 }
 
 function dbToJs(name,x){
   if(!x) return null;
   if(name==="suppliers") return {id:x.id,name:x.nome,type:x.tipo||"",contact:x.contato||"",phone:x.telefone||"",whatsapp:x.telefone||"",email:x.email||"",site:x.site||"",leadTime:x.prazo_medio_envio||"",status:x.status||"Ativo",notes:x.observacoes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
   if(name==="products") return {id:x.id,name:x.nome,category:x.categoria||"",asin:x.asin||"",sku:x.sku||"",ean:x.ean||"",gtin:x.gtin||"",supplierId:x.fornecedor_id||"",buyLink:x.link_compra||"",imageUrl:x.imagem_url||"",status:x.status||"Ativo na Amazon",buyPrice:num(x.preco_compra),buyShipping:num(x.frete_compra),salePrice:num(x.preco_venda),saleShipping:num(x.frete_venda),amazonFees:num(x.taxas_amazon),notes:x.observacoes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
-  if(name==="customers"){const extra=customerNotesFromDb(x.observacoes);return {id:x.id,name:x.nome,phone:x.telefone||"",email:x.email||"",cep:extra.cep||"",address:extra.address||"",number:extra.number||"",complement:extra.complement||"",district:extra.district||"",city:extra.city||"",uf:extra.uf||"",notes:extra.notes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};}
+  if(name==="customers"){const extra=customerNotesFromDb(x.observacoes);return {id:x.id,name:x.nome,phone:x.telefone||"",email:x.email||"",cpf:extra.cpf||"",cep:extra.cep||"",address:extra.address||"",number:extra.number||"",complement:extra.complement||"",district:extra.district||"",city:extra.city||"",uf:extra.uf||"",notes:extra.notes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};}
   if(name==="messages") return {id:x.id,name:x.nome,type:x.tipo||"",body:x.texto||"",active:x.ativo!==false,createdAt:x.data_criacao,updatedAt:x.data_atualizacao};
-  if(name==="orders"){const extra=orderNotesFromDb(x.observacoes);return {id:x.id,orderDate:x.data_pedido||"",amazonOrderId:x.numero_pedido_amazon||"",productId:x.produto_id||"",productName:x.nome_produto||"",customerId:x.cliente_id||"",customerName:x.nome_cliente||"",customerPhone:x.telefone_cliente||"",customerCep:x.cep_cliente||"",customerAddress:x.endereco_cliente||"",customerNumber:x.numero_cliente||"",customerComplement:x.complemento_cliente||"",customerDistrict:x.bairro_cliente||"",customerCity:x.cidade_cliente||"",customerUf:x.uf_cliente||"",supplierId:x.fornecedor_id||"",purchaseMarketplace:extra.purchaseMarketplace||"",purchaseAccount:extra.purchaseAccount||"",marketplaceOrderId:extra.marketplaceOrderId||"",agentDecision:extra.agentDecision||"",buyLink:x.link_compra||"",status:x.status||"Venda realizada Amazon",salePrice:num(x.preco_venda),saleShipping:num(x.frete_venda),quantity:num(x.quantidade)||1,totalRevenue:num(x.receita_total),buyPrice:num(x.preco_compra),buyShipping:num(x.frete_compra),buyDiscount:num(x.desconto_compra),totalSupplier:num(x.custo_total_fornecedor),supplierQuantity:num(x.quantidade_fornecedor)||1,amazonFees:num(x.taxas_amazon),netProfit:num(x.lucro_liquido),hasNetProfit:!!x.tem_lucro_liquido,netProfitSource:x.origem_lucro_liquido||"",trackingCode:x.codigo_rastreio||"",trackingSent:x.rastreio_enviado||"Não",messageTemplateId:x.mensagem_id||"",notes:extra.notes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};}
+  if(name==="orders"){const extra=orderNotesFromDb(x.observacoes);return {id:x.id,orderDate:x.data_pedido||"",amazonOrderId:x.numero_pedido_amazon||"",productId:x.produto_id||"",productName:x.nome_produto||"",customerId:x.cliente_id||"",customerName:x.nome_cliente||"",customerPhone:x.telefone_cliente||"",customerCpf:extra.customerCpf||"",customerCep:x.cep_cliente||"",customerAddress:x.endereco_cliente||"",customerNumber:x.numero_cliente||"",customerComplement:x.complemento_cliente||"",customerDistrict:x.bairro_cliente||"",customerCity:x.cidade_cliente||"",customerUf:x.uf_cliente||"",supplierId:x.fornecedor_id||"",purchaseMarketplace:extra.purchaseMarketplace||"",purchaseAccount:extra.purchaseAccount||"",marketplaceOrderId:extra.marketplaceOrderId||"",agentDecision:extra.agentDecision||"",buyLink:x.link_compra||"",status:x.status||"Venda realizada Amazon",salePrice:num(x.preco_venda),saleShipping:num(x.frete_venda),quantity:num(x.quantidade)||1,totalRevenue:num(x.receita_total),buyPrice:num(x.preco_compra),buyShipping:num(x.frete_compra),buyDiscount:num(x.desconto_compra),totalSupplier:num(x.custo_total_fornecedor),supplierQuantity:num(x.quantidade_fornecedor)||1,amazonFees:num(x.taxas_amazon),netProfit:num(x.lucro_liquido),hasNetProfit:!!x.tem_lucro_liquido,netProfitSource:x.origem_lucro_liquido||"",trackingCode:x.codigo_rastreio||"",trackingSent:x.rastreio_enviado||"Não",messageTemplateId:x.mensagem_id||"",notes:extra.notes||"",createdAt:x.data_criacao,updatedAt:x.data_atualizacao};}
   return null;
 }
 function scheduleSupabaseSync(name){
@@ -380,6 +386,12 @@ function seed(){
 }
 
 function openView(view){
+  const previousView=activeView();
+  if(previousView!==view && $("globalSearch")){
+    $("globalSearch").value="";
+    orderPage=1;
+    lastProductAutoFillQuery="";
+  }
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
   document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
   updateSearchPlaceholder();
@@ -439,7 +451,7 @@ function filteredOrders(){
   const status=$("ordersStatusFilter")?.value || "all";
   const now=new Date(); const t=today();
   return read(K.orders).filter(o=>{
-    const blob=`${o.amazonOrderId} ${o.productName} ${o.customerName} ${o.customerPhone||""} ${o.customerCep||""} ${o.customerCity||""} ${o.customerUf||""} ${supplierName(o.supplierId)} ${orderMarketplace(o)} ${o.purchaseMarketplace||""} ${o.purchaseAccount||""} ${o.status} ${o.trackingCode||""}`;
+    const blob=`${o.amazonOrderId} ${o.productName} ${o.customerName} ${o.customerPhone||""} ${o.customerCpf||""} ${o.customerCep||""} ${o.customerCity||""} ${o.customerUf||""} ${supplierName(o.supplierId)} ${orderMarketplace(o)} ${o.purchaseMarketplace||""} ${o.purchaseAccount||""} ${o.status} ${o.trackingCode||""}`;
     if(!textMatch(blob,q)) return false;
     if(status!=="all" && o.status!==status) return false;
     if(period==="today") return o.orderDate===t;
@@ -579,7 +591,7 @@ $("orderProductId").onchange=()=>{
   $("amazonFees").value=p.amazonFees||0;
   updateOrderCalcPreview();
 };
-$("orderCustomerId").onchange=()=>{const c=read(K.customers).find(x=>x.id===$("orderCustomerId").value);if(!c)return;["Name","Phone","Cep","Address","Number","Complement","District","City","Uf"].forEach(f=>{$("customer"+f).value=c[f.toLowerCase()]||c[f.charAt(0).toLowerCase()+f.slice(1)]||""});};
+$("orderCustomerId").onchange=()=>{const c=read(K.customers).find(x=>x.id===$("orderCustomerId").value);if(!c)return;["Name","Phone","Cpf","Cep","Address","Number","Complement","District","City","Uf"].forEach(f=>{$("customer"+f).value=c[f.toLowerCase()]||c[f.charAt(0).toLowerCase()+f.slice(1)]||""});};
 $("cepBtn").onclick=async()=>{const cep=$("customerCep").value.replace(/\D/g,""); if(cep.length!==8)return alert("Digite um CEP com 8 números."); try{const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`);const d=await r.json();if(d.erro)return alert("CEP não encontrado.");$("customerAddress").value=d.logradouro||"";$("customerComplement").value=d.complemento||"";$("customerDistrict").value=d.bairro||"";$("customerCity").value=d.localidade||"";$("customerUf").value=d.uf||"";}catch(e){alert("Não foi possível consultar o CEP.");}};
 
 function upsertCustomer(o){
@@ -591,7 +603,7 @@ function upsertCustomer(o){
     const ok=orderCustomerMatchKey(o);
     if(ok) ix=arr.findIndex(c=>customerMatchKey(c)===ok);
   }
-  const c={id:ix>=0?arr[ix].id:uuid(),name:o.customerName,phone:o.customerPhone,cep:o.customerCep,address:o.customerAddress,number:o.customerNumber,complement:o.customerComplement,district:o.customerDistrict,city:o.customerCity,uf:o.customerUf};
+  const c={id:ix>=0?arr[ix].id:uuid(),name:o.customerName,phone:o.customerPhone,cpf:o.customerCpf||"",cep:o.customerCep,address:o.customerAddress,number:o.customerNumber,complement:o.customerComplement,district:o.customerDistrict,city:o.customerCity,uf:o.customerUf};
   ix>=0?arr[ix]=c:arr.push(c);write(K.customers,arr);return c.id;
 }
 function cleanKey(v){return String(v||"").trim().toLowerCase();}
@@ -724,7 +736,7 @@ function orderFromForm(){
   const p=read(K.products).find(x=>x.id===$("orderProductId").value);
   const old=read(K.orders).find(x=>x.id===$("orderId").value)||{};
   const productName=p?.name || old.productName || "";
-  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value||p?.id||old.productId||"",productName,customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,purchaseMarketplace:$("purchaseMarketplace")?.value||"",marketplaceOrderId:$("marketplaceOrderId")?.value||"",purchaseAccount:$("purchaseAccount")?.value||"",buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
+  return {id:$("orderId").value||uuid(),orderDate:$("orderDate").value,amazonOrderId:$("amazonOrderId").value,productId:$("orderProductId").value||p?.id||old.productId||"",productName,customerId:$("orderCustomerId").value,customerName:$("customerName").value,customerPhone:$("customerPhone").value,customerCpf:$("customerCpf")?.value||"",customerCep:$("customerCep").value,customerAddress:$("customerAddress").value,customerNumber:$("customerNumber").value,customerComplement:$("customerComplement").value,customerDistrict:$("customerDistrict").value,customerCity:$("customerCity").value,customerUf:$("customerUf").value,supplierId:$("orderSupplierId").value,purchaseMarketplace:$("purchaseMarketplace")?.value||"",marketplaceOrderId:$("marketplaceOrderId")?.value||"",purchaseAccount:$("purchaseAccount")?.value||"",buyLink:$("buyLink").value,status:$("orderStatus").value,salePrice:num($("salePrice").value),quantity:Math.max(1,parseInt($("orderQuantity")?.value||"1",10)||1),saleShipping:num($("saleShipping").value),buyPrice:num($("buyPrice").value),buyShipping:num($("buyShipping").value),buyDiscount:num($("buyDiscount").value),amazonFees:num($("amazonFees").value),trackingCode:$("trackingCode").value,trackingSent:$("trackingSent").value,messageTemplateId:$("messageTemplateId").value,notes:$("orderNotes").value,updatedAt:new Date().toISOString()};
 }
 $("orderForm").onsubmit=e=>{e.preventDefault();let arr=read(K.orders);let o=resolveOrderProductSelection(orderFromForm());let ix=arr.findIndex(x=>x.id===o.id);if(ix<0 && !confirmIfDuplicate(o,arr,o.id)) return;o.customerId=upsertCustomer(o);ix>=0?arr[ix]=o:arr.push({...o,createdAt:new Date().toISOString()});write(K.orders,arr);updateProductPurchaseFromOrder(o);clearOrder();render();};
 function clearOrder(){ $("orderForm").reset(); $("orderId").value=""; $("orderFormTitle").textContent="Novo pedido Amazon"; $("orderDate").value=today(); ["saleShipping","buyShipping","buyDiscount","amazonFees"].forEach(id=>$(id).value=0); if($("orderQuantity")) $("orderQuantity").value=1; if($("purchaseAccount")) $("purchaseAccount").value=""; if($("purchaseMarketplace")) $("purchaseMarketplace").value=""; if($("marketplaceOrderId")) $("marketplaceOrderId").value="";}
@@ -755,7 +767,7 @@ function fillOrderForm(o,{scroll=true}={}){
   const productId=(resolvedProduct?.id || o.productId || "");
   const productName=(resolvedProduct?.name || o.productName || "");
   const supplierId=(o.supplierId || resolvedProduct?.supplierId || "");
-  const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:supplierId,purchaseMarketplace:o.purchaseMarketplace||"",marketplaceOrderId:o.marketplaceOrderId||"",purchaseAccount:o.purchaseAccount||"",buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};
+  const map={orderId:o.id,orderDate:o.orderDate,amazonOrderId:o.amazonOrderId,orderProductId:productId,orderCustomerId:o.customerId,customerName:o.customerName,customerPhone:o.customerPhone,customerCpf:o.customerCpf||"",customerCep:o.customerCep,customerAddress:o.customerAddress,customerNumber:o.customerNumber,customerComplement:o.customerComplement,customerDistrict:o.customerDistrict,customerCity:o.customerCity,customerUf:o.customerUf,orderSupplierId:supplierId,purchaseMarketplace:o.purchaseMarketplace||"",marketplaceOrderId:o.marketplaceOrderId||"",purchaseAccount:o.purchaseAccount||"",buyLink:o.buyLink,orderStatus:o.status,salePrice:o.salePrice,orderQuantity:lineQuantity(o),saleShipping:o.saleShipping,buyPrice:o.buyPrice,buyShipping:o.buyShipping,buyDiscount:o.buyDiscount,amazonFees:o.amazonFees,trackingCode:o.trackingCode,trackingSent:o.trackingSent,messageTemplateId:o.messageTemplateId,orderNotes:o.notes};
   setFormValues(map);
   if($('orderProductId')) $('orderProductId').value=productId;
   if($('orderSupplierId')) $('orderSupplierId').value=supplierId;
@@ -1049,7 +1061,7 @@ function financeSelectedOrders(){
   const q=searchQuery();
   const selected=$("financeMonthFilter")?.value || localStorage.getItem("npc_finance_month") || "all";
   return read(K.orders).filter(o=>{
-    const blob=`${o.amazonOrderId} ${o.productName} ${o.customerName} ${o.customerPhone||""} ${o.customerCep||""} ${o.customerCity||""} ${o.customerUf||""} ${supplierName(o.supplierId)} ${orderMarketplace(o)} ${o.purchaseMarketplace||""} ${o.purchaseAccount||""} ${o.status} ${o.trackingCode||""}`;
+    const blob=`${o.amazonOrderId} ${o.productName} ${o.customerName} ${o.customerPhone||""} ${o.customerCpf||""} ${o.customerCep||""} ${o.customerCity||""} ${o.customerUf||""} ${supplierName(o.supplierId)} ${orderMarketplace(o)} ${o.purchaseMarketplace||""} ${o.purchaseAccount||""} ${o.status} ${o.trackingCode||""}`;
     if(!textMatch(blob,q)) return false;
     if(selected!=="all" && monthKey(o.orderDate)!==selected) return false;
     return true;

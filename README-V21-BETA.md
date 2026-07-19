@@ -61,12 +61,3 @@ Para uma aplicação privada, também é possível configurar `AMAZON_REFRESH_TO
 ## Compatibilidade
 
 Os dados locais e configurações da V20 são preservados porque a V21 utiliza as mesmas chaves anteriores e acrescenta apenas as chaves `npc_v21_*`.
-
-## Correção V21.0.1 — deploy Vercel
-
-O campo `functions.runtime` foi removido do `vercel.json`. Para funções JavaScript dentro da pasta `/api`, a Vercel detecta automaticamente o runtime Node.js. A versão do Node foi fixada em `22.x` pelo arquivo `package.json`.
-
-
-## V21.0.2 — correção de implantação
-
-O arquivo `vercel.json` foi removido integralmente. A Vercel detecta automaticamente os arquivos JavaScript em `/api` como Functions Node.js. O projeto deve ser enviado ao GitHub com os arquivos na raiz do repositório.
